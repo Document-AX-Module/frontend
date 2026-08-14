@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(rm -f src/lib/spellCheck.ts)",
+      "Bash(rmdir src/lib)",
+      "Bash(mkdir -p src/components/layout src/components/ui src/components/document)"
+    ]
+  }
+}

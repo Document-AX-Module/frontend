@@ -1,0 +1,39 @@
+@import "tailwindcss";
+
+/*
+ * AX Document Platform — PCN brand palette.
+ * Base white, black text, deep-red accent (PCN "pcn" wordmark red).
+ */
+@theme {
+  --color-canvas: #ffffff;
+  --color-surface: #f6f6f7;
+  --color-surface-2: #efeff1;
+  --color-border: #e5e5e8;
+  --color-ink: #191919;
+  --color-ink-muted: #6b6b73;
+
+  --color-primary: #b01c2e;
+  --color-primary-hover: #8f1626;
+  --color-primary-soft: #fbeaec;
+
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+}
+
+html,
+body {
+  height: 100%;
+}
+
+body {
+  background: var(--color-canvas);
+  color: var(--color-ink);
+  font-family: var(--font-sans), system-ui, -apple-system, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Thin, neutral scrollbars to match the light UI. */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: #d4d4d8 transparent;
+}
