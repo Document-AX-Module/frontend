@@ -27,10 +27,6 @@ export function ErrorBanner({
   );
 }
 
-/* ------------------------------------------------------------------ */
-/* Shared skeleton UI primitives. Presentational only — no data yet.  */
-/* ------------------------------------------------------------------ */
-
 export function PageHeader({
   title,
   description,
@@ -126,6 +122,11 @@ const STATUS_STYLES: Record<DocStatus, { label: string; className: string }> = {
   READY: { label: "준비 완료", className: "bg-emerald-50 text-emerald-700" },
   FAILED: { label: "실패", className: "bg-primary-soft text-primary" },
 };
+
+/** Korean label for a processing status, so callers don't re-declare the map. */
+export function statusLabel(status: DocStatus | string): string {
+  return STATUS_STYLES[status as DocStatus]?.label ?? status;
+}
 
 export function StatusBadge({ status }: { status: DocStatus | string }) {
   // Tolerate unknown/raw status strings from the backend.

@@ -9,10 +9,6 @@ const MAX_MB = 50;
 const ALLOWED = ["pdf", "hwpx", "hwp", "docx", "xlsx", "pptx", "txt", "md"];
 const ACCEPT = ALLOWED.map((e) => `.${e}`).join(",");
 
-// Description is being added on the backend; send it (extra multipart fields are
-// ignored server-side until the column lands).
-const DESCRIPTION_SUPPORTED = true;
-
 function extOf(name: string) {
   return name.split(".").pop()?.toLowerCase() ?? "";
 }
@@ -108,7 +104,7 @@ export function UploadDialog({
       file,
       name: name.trim(),
       folderId,
-      description: DESCRIPTION_SUPPORTED && description.trim() ? description.trim() : undefined,
+      description: description.trim() || undefined,
     });
   }
 

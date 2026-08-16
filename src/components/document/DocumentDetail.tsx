@@ -69,7 +69,7 @@ export function DocumentDetail({ docId }: { docId: string }) {
     versions.find((v) => v.id === doc?.current_version_id) ??
     versions[0] ??
     null;
-  const status = version?.processing_status ?? doc?.status ?? "";
+  const status = version?.processing_status ?? "";
 
   // Auto-refresh while the document is still processing.
   useEffect(() => {

@@ -91,15 +91,48 @@ Real, wired to the backend (all require login — set `NEXT_PUBLIC_AUTH_ENABLED=
   **202 + RUNNING**, so the panel **polls `GET /analyses/{id}` until COMPLETED/FAILED**,
   resumes an in-progress run on mount, and shows findings grouped by category. Clicking a
   finding scrolls the viewer to its `section_id` and highlights it.
+- **Dashboard** (`/`) — `DashboardView` (`src/components/dashboard/`): `GET /dashboard/summary`
+  + `GET /activity` + `GET /documents/recent` in one `Promise.all`. **The first two responses are
+  the only camelCase ones in the API**
+  (`ragToday`, `weeklyProcessing`) — the backend aliased them to the contract the frontend had
+  already fixed. The backend deliberately leaves three derivations to the client:
+  `weeklyProcessing` axis labels (**UTC** day boundaries, last element = today),
+  `pipeline[].status` → Korean labels via `statusLabel()`, and `at` → relative time.
+  Re-fetches every 15s **only while `stats.processing > 0`**. `stats.ragToday` is a hard 0
+  (RAG is MVP2) so the tile carries a `RAG 미구현` badge; stat tiles have no delta/sparkline
+  because no historical source exists.
+  - The activity feed reads the backend's `activity_logs` table, which stores **action codes**
+    and derives the display phrase + badge `kind` at read time — so `kind` is an enumerated set
+    the frontend must cover: 11 values (`로그인 프로젝트 폴더 삭제 업로드 오타 분류 규정 추천 분석
+    기타`). Add a backend action code → extend `KIND_TONE` in `DashboardView`.
+  - **Badge colour is per-class, not per-kind** (4 tones): 11 hues aren't tellable apart, and
+    the badge text already names the kind, so colour carries class only. Brand red is reserved
+    for `삭제`. Validated across **all** pairs (a feed mixes kinds in any order), which is why
+    amber is out — it sits ΔE 10.6 from the brand red, under the 15 normal-vision floor.
 
-Still **mock / not wired** (backend endpoints pending): Dashboard (`/`), RAG Search
-(`/search`), Embedding Lab (`/embedding-lab`), and the AI panel's 규정검증/비교/추천 tabs.
+  - **최근 문서** card reads `GET /documents/recent` (`listRecentDocuments` in `documents.ts`, not
+    `dashboard.ts` — the path domain is documents). That response is **snake_case** like the rest
+    of the API, with `project_name` + `processing_status` flattened in so each row draws its
+    project path and `StatusBadge` without a per-document lookup.
+
+  - Feed rows link to a document only via `canLinkToDocument()`:
+    `targetType === "document" && targetId != null && targetAlive`. Both clauses are
+    load-bearing — ids are per-table, so a `project`-typed row's `targetId` resolves to an
+    unrelated *document* (a silent 200 on the wrong file, worse than a 404), and logs outlive
+    their targets, so `targetAlive` is what rules out deleted ones. **Deliberately no `kind`
+    check**: `kind` is display copy, so keying behaviour off it breaks silently if the Korean
+    wording changes. `targetAlive` is a response-time snapshot, so a concurrent delete can still
+    404 — `DocumentDetail`'s error banner is the backstop.
+
+Still **mock / not wired** (backend endpoints pending): RAG Search (`/search`), Embedding Lab
+(`/embedding-lab`), and the AI panel's 규정검증/비교/추천 tabs.
 
 ### Conventions & gotchas
 
-- **Two status fields**: `document_versions.processing_status` is the pipeline state; the list
-  badge and detail header read **that** (`current_version.processing_status`), not
-  `documents.status` (which defaults to `"DRAFT"` and is a separate lifecycle field).
+- **Status lives on the version, not the document.** `documents.status` was dropped
+  (migration `72b852f975d6`) and `DocumentRead` no longer returns it — read
+  `current_version.processing_status`, falling back to `"UPLOADED"` when a document has no
+  version yet (the same rule the backend applies in `RecentDocumentRead`).
 - **Processing status flow** (`DocStatus`):
   `UPLOADED → PARSING → PARSED → CHUNKING → CHUNKED → EMBEDDING → READY` (or `FAILED`). The
   pipeline currently **settles at `CHUNKED` (75%)**; `EMBEDDING→READY` waits on Phase 9. Poll
@@ -107,7 +140,9 @@ Still **mock / not wired** (backend endpoints pending): Dashboard (`/`), RAG Sea
 - **Modals, not native dialogs**: use `Modal` / `ConfirmDialog` / `PromptDialog`
   (`src/components/ui/Modal.tsx`) instead of `alert`/`confirm`/`prompt`.
 - **Shared UI** in `src/components/ui/primitives.tsx` (`PageHeader`, `Card`, `Button`,
-  `StatusBadge`, `ErrorBanner`, `Tag`). `ErrorBanner` shows a login link only for auth errors.
+  `StatusBadge`, `statusLabel`, `ErrorBanner`, `Tag`). `ErrorBanner` shows a login link only for
+  auth errors. `STATUS_STYLES` is the single source of Korean status labels — read it via
+  `statusLabel()` instead of re-declaring the map.
 - **Charts** (`src/components/charts/`) are dependency-free inline SVG, single brand-red hue
   (no categorical palette → no colorblind validation needed). Dashboard uses them (mock data).
 - `description` is a real `documents` column (upload accepts it; `DocumentRead` returns it).

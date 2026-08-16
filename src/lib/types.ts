@@ -57,8 +57,7 @@ export type Document = {
   folder_id: number | null;
   name: string;
   document_type: string | null;
-  description?: string | null; // backend field being added
-  status: string; // document lifecycle/processing status
+  description: string | null;
   current_version_id: number | null;
   created_by: string | null;
   author: AuthorInfo | null;
@@ -77,6 +76,21 @@ export type DocumentVersion = {
   checksum: string | null;
   processing_status: string;
   parser_version: string | null;
+  created_at: string;
+};
+
+/**
+ * Mirror backend `RecentDocumentRead` — a flattened view for the dashboard's
+ * "최근 문서" card, so the project path and status badge need no extra request.
+ * `processing_status` is the current version's (falling back to `UPLOADED` when
+ * there is no version yet), *not* `documents.status`.
+ */
+export type RecentDocument = {
+  id: number;
+  name: string;
+  project_id: number;
+  project_name: string;
+  processing_status: string;
   created_at: string;
 };
 
@@ -195,6 +209,21 @@ export type ActivityItem = {
   target: string;
   kind: string;
   at: string;
+  /**
+   * `document` | `project` | `folder` | null. **Not a link target on its own** —
+   * ids are per-table, so a `project` row's `targetId` collides with an unrelated
+   * live document id. Always pair with `targetType`.
+   */
+  targetType: string | null;
+  targetId: number | null;
+  /**
+   * Whether the target row still existed **when the response was built**. The id
+   * is kept even for deleted targets (an audit log's "document 8 was deleted" is
+   * a different fact from "no target"), so this is the liveness signal.
+   * Snapshot only — a concurrent delete between response and click still 404s,
+   * which the detail page's error banner absorbs.
+   */
+  targetAlive: boolean;
 };
 
 /* --- Common --- */

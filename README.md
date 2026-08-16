@@ -53,9 +53,10 @@ src/
 Behind login (`NEXT_PUBLIC_AUTH_ENABLED=true`): Google OAuth → projects CRUD → folder tree
 (create/rename/delete) → document upload (modal + preview + description) → processing-status
 polling → document detail (outline / viewer / metadata / download) → **AI proofread** (async,
-polled, click-to-jump findings).
+polled, click-to-jump findings) → **Dashboard** (stats / weekly trend / type breakdown /
+pipeline counts / recent documents / activity feed).
 
-Still mock (backend pending): Dashboard, RAG Search, Embedding Lab, and the AI panel's
+Still mock (backend pending): RAG Search, Embedding Lab, and the AI panel's
 regulation-check / compare / related tabs.
 
 See [`CLAUDE.md`](CLAUDE.md) for architecture and conventions, and

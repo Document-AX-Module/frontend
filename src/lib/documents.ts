@@ -1,5 +1,5 @@
 import { api, ApiError, BASE_URL, getAccessToken } from "./api";
-import type { Document, DocumentUploadResponse } from "./types";
+import type { Document, DocumentUploadResponse, RecentDocument } from "./types";
 
 export function listDocuments(
   projectId: string,
@@ -11,6 +11,16 @@ export function listDocuments(
   if (filters?.type) params.set("type", filters.type);
   const q = params.toString();
   return api.get<Document[]>(`/projects/${projectId}/documents${q ? `?${q}` : ""}`);
+}
+
+/**
+ * Newest documents across every project the caller can see — the one document
+ * listing that isn't project-scoped. Backend clamps `limit` to 1–50.
+ */
+export function listRecentDocuments(limit = 5, projectId?: number) {
+  const params = new URLSearchParams({ limit: String(limit) });
+  if (projectId != null) params.set("project_id", String(projectId));
+  return api.get<RecentDocument[]>(`/documents/recent?${params}`);
 }
 
 /** Multipart upload → 202 Accepted; processing continues in the background. */

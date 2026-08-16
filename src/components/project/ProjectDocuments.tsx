@@ -258,7 +258,8 @@ export function ProjectDocuments({ projectId }: { projectId: string }) {
                         {d.current_version ? `V${d.current_version.version_no}` : "—"}
                       </td>
                       <td className="px-5 py-3">
-                        <StatusBadge status={d.current_version?.processing_status ?? d.status} />
+                        {/* 버전이 없으면 UPLOADED로 본다 — 백엔드 RecentDocumentRead와 같은 규칙. */}
+                        <StatusBadge status={d.current_version?.processing_status ?? "UPLOADED"} />
                       </td>
                       <td className="px-5 py-3 text-ink-muted">{authorLabel(d)}</td>
                       <td className="px-5 py-3 text-ink-muted">{fmtDate(d.created_at)}</td>
