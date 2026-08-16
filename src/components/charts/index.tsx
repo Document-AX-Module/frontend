@@ -5,6 +5,8 @@
  * spec: 2px lines, rounded bar ends, recessive grid, native <title> hover.
  */
 
+import { TONE_STYLES, type StatusTone } from "@/components/ui/primitives";
+
 const RED = "#b01c2e";
 
 /* --- Tiny sparkline for stat tiles --- */
@@ -61,7 +63,19 @@ export function AreaTrend({
   const grid = [0, 0.25, 0.5, 0.75, 1];
 
   return (
-    <svg viewBox={`0 0 ${W} ${H}`} className="h-auto w-full">
+    /*
+     * `<title>` per point gives hover detail, but the chart itself was
+     * unlabelled, so a screen reader announced eight bare numbers with no idea
+     * what they measured.
+     */
+    <svg
+      viewBox={`0 0 ${W} ${H}`}
+      className="h-auto w-full"
+      role="img"
+      aria-label={`최근 ${data.length}일 문서 처리량 추이. ${labels
+        .map((l, i) => `${l} ${data[i]}건`)
+        .join(", ")}.`}
+    >
       <defs>
         <linearGradient id="areaFill" x1="0" y1="0" x2="0" y2="1">
           <stop offset="0%" stopColor={RED} stopOpacity="0.22" />
@@ -120,14 +134,16 @@ export function BarList({
     <ul className="flex flex-col gap-3">
       {items.map((it) => (
         <li key={it.label} className="flex items-center gap-3 text-sm">
-          <span className="w-16 shrink-0 text-ink-muted">{it.label}</span>
-          <div className="h-2.5 flex-1 overflow-hidden rounded-full bg-surface-2" title={`${it.label}: ${it.value}`}>
+          <span className="w-16 shrink-0 truncate text-ink-muted" title={it.label}>
+            {it.label}
+          </span>
+          <div className="h-2.5 flex-1 overflow-hidden rounded-full bg-surface-2">
             <div
               className="h-full rounded-full bg-primary"
               style={{ width: `${Math.max((it.value / max) * 100, 6)}%` }}
             />
           </div>
-          <span className="w-8 shrink-0 text-right font-medium text-ink">{it.value}</span>
+          <span className="w-8 shrink-0 text-right font-mono font-medium text-ink">{it.value}</span>
         </li>
       ))}
     </ul>
@@ -138,25 +154,39 @@ export function BarList({
 export function PipelineStrip({
   stages,
 }: {
-  stages: { label: string; count: number; tone: "done" | "active" | "idle" | "fail" }[];
+  stages: { label: string; count: number; tone: StatusTone }[];
 }) {
-  const tone: Record<string, string> = {
-    done: "border-emerald-200 bg-emerald-50 text-emerald-700",
-    active: "border-sky-200 bg-sky-50 text-sky-700",
-    idle: "border-border bg-surface text-ink-muted",
-    fail: "border-primary/30 bg-primary-soft text-primary",
-  };
   return (
-    <div className="flex items-stretch gap-2 overflow-x-auto">
+    /*
+     * One segmented track, not a row of detached blocks. `min-w-[92px]` boxes in
+     * a flex row didn't grow, so the strip stopped at roughly two thirds of the
+     * container and hung left of the full-width sections above and below it.
+     * Segments now share the width, which also retires the connector: abutting
+     * cells read as a sequence on their own, where the old "→" was a text glyph
+     * doing a drawing job that screen readers announced as content.
+     *
+     * `min-w` keeps each segment legible and lets the track scroll instead of
+     * crushing seven labels into a phone's width.
+     */
+    <ol className="flex overflow-x-auto rounded-panel border border-border">
       {stages.map((s, i) => (
-        <div key={s.label} className="flex items-center gap-2">
-          <div className={`min-w-[92px] rounded-lg border px-3 py-2.5 text-center ${tone[s.tone]}`}>
-            <p className="text-lg font-semibold leading-none">{s.count}</p>
-            <p className="mt-1 text-[11px]">{s.label}</p>
-          </div>
-          {i < stages.length - 1 && <span className="text-border">→</span>}
-        </div>
+        <li
+          key={s.label}
+          /*
+           * An empty segment gets no fill. Six of seven stages are usually
+           * empty, so `TONE_STYLES.idle` would tint most of the track and make
+           * its 12px label a 4.60:1 pair (AA, but with no margin); unfilled, the
+           * same label sits on the card at 5.28:1. It also reads better: the
+           * track is plain and colour appears only where documents actually are.
+           */
+          className={`min-w-[88px] flex-1 px-2 py-2.5 text-center ${
+            i > 0 ? "border-l border-border" : ""
+          } ${s.tone === "idle" ? "text-ink-muted" : TONE_STYLES[s.tone]}`}
+        >
+          <p className="font-mono text-lg font-semibold leading-none">{s.count}</p>
+          <p className="mt-1 text-xs">{s.label}</p>
+        </li>
       ))}
-    </div>
+    </ol>
   );
 }

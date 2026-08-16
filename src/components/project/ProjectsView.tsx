@@ -5,8 +5,8 @@ import Link from "next/link";
 import { listProjects, createProject, deleteProject } from "@/lib/projects";
 import { errorMessage, isAuthError } from "@/lib/api";
 import type { Project } from "@/lib/types";
-import { PageHeader, Card, Button, ErrorBanner } from "@/components/ui/primitives";
-import { ConfirmDialog } from "@/components/ui/Modal";
+import { PageHeader, Card, Button, ErrorBanner, Field, Input } from "@/components/ui/primitives";
+import { ConfirmDialog, Modal } from "@/components/ui/Modal";
 import { useAuth } from "@/components/auth/AuthProvider";
 
 function fmtDate(iso: string) {
@@ -27,6 +27,7 @@ export function ProjectsView() {
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const [formError, setFormError] = useState<string | null>(null);
 
   const [deleteTarget, setDeleteTarget] = useState<Project | null>(null);
   const [deleteBusy, setDeleteBusy] = useState(false);
@@ -55,21 +56,27 @@ export function ProjectsView() {
     load();
   }, [authLoading]);
 
+  function openForm() {
+    setName("");
+    setDescription("");
+    setFormError(null);
+    setShowForm(true);
+  }
+
   async function onCreate(e: FormEvent) {
     e.preventDefault();
     if (!name.trim()) return;
     setSubmitting(true);
+    setFormError(null);
     try {
       const created = await createProject({
         name: name.trim(),
         description: description.trim() || undefined,
       });
       setProjects((prev) => [created, ...prev]);
-      setName("");
-      setDescription("");
       setShowForm(false);
     } catch (e) {
-      setError(errorMessage(e, "프로젝트 생성에 실패했습니다."));
+      setFormError(errorMessage(e, "프로젝트 생성에 실패했습니다."));
       setNeedLogin(isAuthError(e));
     } finally {
       setSubmitting(false);
@@ -97,37 +104,8 @@ export function ProjectsView() {
       <PageHeader
         title="프로젝트"
         description="프로젝트별로 폴더와 문서를 구성하고 AI 기능을 적용합니다."
-        actions={
-          <Button onClick={() => setShowForm((v) => !v)}>
-            {showForm ? "닫기" : "＋ 새 프로젝트"}
-          </Button>
-        }
+        actions={<Button onClick={openForm}>새 프로젝트</Button>}
       />
-
-      {showForm && (
-        <Card className="p-5">
-          <form onSubmit={onCreate} className="flex flex-col gap-3">
-            <input
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              placeholder="프로젝트 이름"
-              className="rounded-lg border border-border bg-canvas px-3 py-2 text-sm text-ink outline-none focus:border-ink-muted"
-              autoFocus
-            />
-            <input
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              placeholder="설명 (선택)"
-              className="rounded-lg border border-border bg-canvas px-3 py-2 text-sm text-ink outline-none focus:border-ink-muted"
-            />
-            <div className="flex gap-2">
-              <Button type="submit" disabled={submitting || !name.trim()}>
-                {submitting ? "생성 중…" : "생성"}
-              </Button>
-            </div>
-          </form>
-        </Card>
-      )}
 
       {error && <ErrorBanner message={error} needLogin={needLogin} />}
 
@@ -172,6 +150,42 @@ export function ProjectsView() {
           ))}
         </div>
       )}
+
+      <Modal
+        open={showForm}
+        onClose={() => setShowForm(false)}
+        title="새 프로젝트"
+        className="max-w-md"
+      >
+        <form onSubmit={onCreate} className="flex flex-col gap-4">
+          <Field label="프로젝트 이름" htmlFor="project-name">
+            <Input
+              id="project-name"
+              autoFocus
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              placeholder="예: 2026 상반기 사업계획"
+            />
+          </Field>
+          <Field label="설명" htmlFor="project-description" hint="선택 항목입니다.">
+            <Input
+              id="project-description"
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              placeholder="이 프로젝트가 다루는 문서를 한 줄로"
+            />
+          </Field>
+          {formError && <ErrorBanner message={formError} needLogin={needLogin} />}
+          <div className="mt-1 flex justify-end gap-2">
+            <Button variant="outline" onClick={() => setShowForm(false)}>
+              취소
+            </Button>
+            <Button type="submit" disabled={submitting || !name.trim()}>
+              {submitting ? "생성 중…" : "생성"}
+            </Button>
+          </div>
+        </form>
+      </Modal>
 
       <ConfirmDialog
         open={deleteTarget !== null}

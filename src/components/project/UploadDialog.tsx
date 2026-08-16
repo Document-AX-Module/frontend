@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState, type DragEvent } from "react";
 import { Modal } from "@/components/ui/Modal";
+import { Button, Field, Input, Textarea, Select } from "@/components/ui/primitives";
 import { flattenFolders } from "./FolderTree";
 import type { Folder } from "@/lib/types";
 
@@ -183,24 +184,20 @@ export function UploadDialog({
           if (f) pickFile(f);
         }} className="hidden" />
 
-        {/* Title */}
-        <div>
-          <label className="text-xs font-medium text-ink-muted">제목</label>
-          <input
+        <Field label="제목" htmlFor="upload-title">
+          <Input
+            id="upload-title"
             value={name}
             onChange={(e) => setName(e.target.value)}
             placeholder="문서 제목"
-            className="mt-1 w-full rounded-lg border border-border bg-canvas px-3 py-2 text-sm text-ink outline-none focus:border-ink-muted"
           />
-        </div>
+        </Field>
 
-        {/* Folder */}
-        <div>
-          <label className="text-xs font-medium text-ink-muted">폴더</label>
-          <select
+        <Field label="폴더" htmlFor="upload-folder">
+          <Select
+            id="upload-folder"
             value={folderId ?? ""}
             onChange={(e) => setFolderId(e.target.value ? Number(e.target.value) : null)}
-            className="mt-1 w-full rounded-lg border border-border bg-canvas px-3 py-2 text-sm text-ink outline-none focus:border-ink-muted"
           >
             <option value="">최상위 (폴더 없음)</option>
             {flat.map((f) => (
@@ -208,39 +205,34 @@ export function UploadDialog({
                 {`${"  ".repeat(f.depth)}${f.name}`}
               </option>
             ))}
-          </select>
-        </div>
+          </Select>
+        </Field>
 
-        {/* Description (UI-only until backend adds the column) */}
-        <div>
-          <label className="text-xs font-medium text-ink-muted">설명 (선택)</label>
-          <textarea
+        {/* `description` is a real `documents` column; upload accepts it. */}
+        <Field label="설명" htmlFor="upload-description" hint="선택 항목입니다.">
+          <Textarea
+            id="upload-description"
             value={description}
             onChange={(e) => setDescription(e.target.value)}
             rows={2}
             placeholder="문서에 대한 간단한 설명"
-            className="mt-1 w-full resize-none rounded-lg border border-border bg-canvas px-3 py-2 text-sm text-ink outline-none focus:border-ink-muted"
+            className="resize-none"
           />
-        </div>
+        </Field>
 
-        {localError && <p className="text-sm text-primary">{localError}</p>}
+        {localError && (
+          <p role="alert" className="text-sm text-primary">
+            {localError}
+          </p>
+        )}
 
         <div className="flex justify-end gap-2">
-          <button
-            type="button"
-            onClick={onCancel}
-            className="rounded-lg border border-border px-3.5 py-2 text-sm font-medium text-ink hover:bg-surface"
-          >
+          <Button variant="outline" onClick={onCancel}>
             취소
-          </button>
-          <button
-            type="button"
-            onClick={submit}
-            disabled={!file || !name.trim() || busy}
-            className="rounded-lg bg-primary px-3.5 py-2 text-sm font-medium text-white hover:bg-primary-hover disabled:opacity-50"
-          >
+          </Button>
+          <Button onClick={submit} disabled={!file || !name.trim() || busy}>
             {busy ? "업로드 중…" : "업로드"}
-          </button>
+          </Button>
         </div>
       </div>
     </Modal>

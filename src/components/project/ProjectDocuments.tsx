@@ -7,7 +7,14 @@ import { listDocuments, uploadDocument, deleteDocument } from "@/lib/documents";
 import { getVersionStatus } from "@/lib/versions";
 import { errorMessage, isAuthError } from "@/lib/api";
 import type { Project, Folder, Document } from "@/lib/types";
-import { PageHeader, Card, Button, StatusBadge, ErrorBanner } from "@/components/ui/primitives";
+import {
+  PageHeader,
+  Card,
+  Button,
+  StatusBadge,
+  ErrorBanner,
+  BackLink,
+} from "@/components/ui/primitives";
 import { ConfirmDialog, PromptDialog } from "@/components/ui/Modal";
 import { UploadDialog, type UploadInput } from "./UploadDialog";
 import { FolderTree, descendantIds } from "./FolderTree";
@@ -19,8 +26,10 @@ function fmtDate(iso: string) {
   return new Date(iso).toLocaleDateString("ko-KR", { month: "2-digit", day: "2-digit" });
 }
 
+const EMPTY = "-";
+
 function authorLabel(d: Document) {
-  return d.author?.name || d.author?.email || d.created_by || "—";
+  return d.author?.name || d.author?.email || d.created_by || EMPTY;
 }
 
 export function ProjectDocuments({ projectId }: { projectId: string }) {
@@ -198,14 +207,14 @@ export function ProjectDocuments({ projectId }: { projectId: string }) {
 
   return (
     <div className="mx-auto flex max-w-6xl flex-col gap-6">
-      <div className="flex flex-col gap-1">
-        <Link href="/projects" className="text-xs text-ink-muted hover:text-primary">
-          ← 프로젝트
-        </Link>
+      <div className="flex flex-col gap-3">
+        <BackLink href="/projects">프로젝트</BackLink>
         <PageHeader
           title={project?.name ?? `프로젝트 #${projectId}`}
           description={`문서 ${documents.length}개`}
-          actions={<Button onClick={() => setUploadOpen(true)}>＋ 문서 업로드</Button>}
+          /* The fullwidth `＋` was a text glyph standing in for an icon; the
+             label already says the button uploads. */
+          actions={<Button onClick={() => setUploadOpen(true)}>문서 업로드</Button>}
         />
       </div>
 
@@ -253,9 +262,9 @@ export function ProjectDocuments({ projectId }: { projectId: string }) {
                           {d.name}
                         </Link>
                       </td>
-                      <td className="px-5 py-3 text-ink-muted">{d.document_type ?? "—"}</td>
+                      <td className="px-5 py-3 text-ink-muted">{d.document_type ?? EMPTY}</td>
                       <td className="px-5 py-3 text-ink-muted">
-                        {d.current_version ? `V${d.current_version.version_no}` : "—"}
+                        {d.current_version ? `V${d.current_version.version_no}` : EMPTY}
                       </td>
                       <td className="px-5 py-3">
                         {/* 버전이 없으면 UPLOADED로 본다 — 백엔드 RecentDocumentRead와 같은 규칙. */}

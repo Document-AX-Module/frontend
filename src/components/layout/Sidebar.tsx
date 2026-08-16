@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import type { ReactNode } from "react";
+import { FOCUS_RING } from "@/components/ui/primitives";
 
 type NavItem = {
   href: string;
@@ -38,13 +39,16 @@ export function Sidebar() {
   return (
     <aside className="flex w-60 shrink-0 flex-col border-r border-border bg-canvas">
       {/* Brand */}
-      <Link href="/" className="flex items-center gap-2.5 px-5 py-5">
-        <span className="grid h-8 w-8 place-items-center rounded-lg bg-primary text-sm font-bold text-white">
+      <Link
+        href="/"
+        className={`mx-3 mt-3 mb-2 flex items-center gap-2.5 rounded-control px-2 py-2.5 ${FOCUS_RING}`}
+      >
+        <span className="grid h-8 w-8 shrink-0 place-items-center rounded-control bg-primary text-sm font-bold text-white">
           AX
         </span>
         <span className="flex flex-col leading-tight">
           <span className="text-sm font-semibold text-ink">AX Platform</span>
-          <span className="text-[11px] text-ink-muted">Document Core</span>
+          <span className="text-xs text-ink-muted">Document Core</span>
         </span>
       </Link>
 
@@ -53,17 +57,15 @@ export function Sidebar() {
           <NavLink key={item.href} item={item} active={isActive(item, pathname)} />
         ))}
 
-        <p className="px-3 pt-6 pb-2 text-[11px] font-semibold uppercase tracking-wider text-ink-muted">
-          관리자
-        </p>
+        <p className="px-3 pt-6 pb-2 text-xs font-semibold text-ink-muted">관리자</p>
         {adminNav.map((item) => (
           <NavLink key={item.href} item={item} active={isActive(item, pathname)} />
         ))}
       </nav>
 
-      <div className="border-t border-border px-5 py-4 text-[11px] text-ink-muted">
-        v0.1 · Phase 0 skeleton
-      </div>
+      {/* Was `v0.1 · Phase 0 skeleton`, which stopped being true once the
+          dashboard, projects and documents surfaces were wired to the API. */}
+      <div className="border-t border-border px-5 py-4 text-xs text-ink-muted">v0.1</div>
     </aside>
   );
 }
@@ -76,7 +78,8 @@ function NavLink({ item, active }: { item: NavItem; active: boolean }) {
   return (
     <Link
       href={item.href}
-      className={`flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition-colors ${
+      aria-current={active ? "page" : undefined}
+      className={`flex items-center gap-3 rounded-control px-3 py-2 text-sm transition-colors ${FOCUS_RING} ${
         active
           ? "bg-primary-soft font-medium text-primary"
           : "text-ink-muted hover:bg-surface hover:text-ink"

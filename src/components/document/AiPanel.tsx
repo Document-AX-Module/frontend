@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { proofread, listAnalyses, getAnalysis } from "@/lib/ai";
 import { ApiError, errorMessage } from "@/lib/api";
 import type { ProofreadResult } from "@/lib/types";
+import { Button, FOCUS_RING } from "@/components/ui/primitives";
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
@@ -18,10 +19,10 @@ const tabs = [
 type TabKey = (typeof tabs)[number]["key"];
 
 const CATEGORY: Record<string, { label: string; className: string }> = {
-  spelling: { label: "맞춤법", className: "bg-primary-soft text-primary" },
-  spacing: { label: "띄어쓰기", className: "bg-amber-50 text-amber-700" },
-  grammar: { label: "문법", className: "bg-sky-50 text-sky-700" },
-  expression: { label: "표현", className: "bg-emerald-50 text-emerald-700" },
+  spelling: { label: "맞춤법", className: "bg-violet-50 text-violet-700" },
+  spacing: { label: "띄어쓰기", className: "bg-sky-50 text-sky-700" },
+  grammar: { label: "문법", className: "bg-emerald-50 text-emerald-700" },
+  expression: { label: "표현", className: "bg-surface-2 text-ink-muted" },
 };
 function cat(c: string) {
   return CATEGORY[c] ?? { label: c, className: "bg-surface-2 text-ink-muted" };
@@ -37,7 +38,7 @@ export function AiPanel({
 }: {
   docId: string;
   status: string;
-  onFocusSection?: (sectionId: number) => void;
+  onFocusSection?: (sectionId: number, original?: string) => void;
 }) {
   const [active, setActive] = useState<TabKey>("proofread");
 
@@ -49,7 +50,8 @@ export function AiPanel({
             key={t.key}
             type="button"
             onClick={() => setActive(t.key)}
-            className={`rounded-t-lg px-3 py-2 text-sm transition-colors ${
+            aria-current={active === t.key ? "page" : undefined}
+            className={`rounded-t-control px-3 py-2 text-sm transition-colors ${FOCUS_RING} focus-visible:ring-offset-0 ${
               active === t.key
                 ? "border-b-2 border-primary font-medium text-primary"
                 : "text-ink-muted hover:text-ink"
@@ -79,7 +81,7 @@ function ProofreadPanel({
 }: {
   docId: string;
   status: string;
-  onFocusSection?: (sectionId: number) => void;
+  onFocusSection?: (sectionId: number, original?: string) => void;
 }) {
   const [result, setResult] = useState<ProofreadResult | null>(null);
   const [running, setRunning] = useState(false);
@@ -174,14 +176,9 @@ function ProofreadPanel({
   return (
     <div className="flex h-full flex-col">
       <div className="flex flex-col gap-2 p-4">
-        <button
-          type="button"
-          onClick={run}
-          disabled={running || !ready}
-          className="w-full rounded-lg bg-primary py-2.5 text-sm font-medium text-white transition-colors hover:bg-primary-hover disabled:opacity-50"
-        >
+        <Button onClick={run} disabled={running || !ready} className="w-full justify-center py-2.5">
           {running ? "검사 중…" : result ? "다시 검사" : "AI 오타 검사 실행"}
-        </button>
+        </Button>
         {!ready && <p className="text-xs text-ink-muted">문서 분석이 끝나면 실행할 수 있어요.</p>}
         {error && <p className="text-sm text-primary">{error}</p>}
       </div>
@@ -202,7 +199,7 @@ function ProofreadPanel({
           <div className="flex flex-col gap-3">
             <div className="flex flex-wrap items-center gap-1.5 text-xs">
               {Object.entries(counts).map(([c, n]) => (
-                <span key={c} className={`rounded-md px-2 py-0.5 font-medium ${cat(c).className}`}>
+                <span key={c} className={`rounded-full px-2.5 py-0.5 font-medium ${cat(c).className}`}>
                   {cat(c).label} {n}
                 </span>
               ))}
@@ -213,36 +210,48 @@ function ProofreadPanel({
 
             <ul className="flex flex-col gap-2">
               {result.findings.map((f, i) => {
+                /* Pass the reported phrase so the viewer can mark the words
+                   themselves rather than flashing the whole section. */
                 const jump =
                   f.section_id != null && onFocusSection
-                    ? () => onFocusSection(f.section_id!)
+                    ? () => onFocusSection(f.section_id!, f.original)
                     : undefined;
+                const body = (
+                  <>
+                    <div className="mb-1 flex items-center gap-2">
+                      <span
+                        className={`rounded-full px-2 py-0.5 text-xs font-medium ${
+                          cat(f.category).className
+                        }`}
+                      >
+                        {cat(f.category).label}
+                      </span>
+                      {f.page_start != null && (
+                        <span className="font-mono text-xs text-ink-muted">p.{f.page_start}</span>
+                      )}
+                      {jump && <span className="ml-auto text-xs text-primary">본문 보기 →</span>}
+                    </div>
+                    <p>
+                      <span className="text-ink-muted line-through">{f.original}</span>
+                      <span className="mx-1.5 text-ink-muted">→</span>
+                      <span className="font-medium text-ink">{f.suggestion}</span>
+                    </p>
+                    {f.reason && <p className="mt-1 text-xs leading-relaxed text-ink-muted">{f.reason}</p>}
+                  </>
+                );
                 return (
                   <li key={i}>
-                    <button
-                      type="button"
-                      onClick={jump}
-                      disabled={!jump}
-                      className={`w-full rounded-lg border border-border p-3 text-left text-sm transition-colors ${
-                        jump ? "cursor-pointer hover:border-primary/40 hover:bg-surface" : "cursor-default"
-                      }`}
-                    >
-                      <div className="mb-1 flex items-center gap-2">
-                        <span className={`rounded px-1.5 py-0.5 text-[11px] font-medium ${cat(f.category).className}`}>
-                          {cat(f.category).label}
-                        </span>
-                        {f.page_start != null && (
-                          <span className="text-[11px] text-ink-muted">p.{f.page_start}</span>
-                        )}
-                        {jump && <span className="ml-auto text-[11px] text-primary">본문 보기 →</span>}
-                      </div>
-                      <p>
-                        <span className="text-ink-muted line-through">{f.original}</span>
-                        <span className="mx-1.5 text-ink-muted">→</span>
-                        <span className="font-medium text-ink">{f.suggestion}</span>
-                      </p>
-                      {f.reason && <p className="mt-1 text-xs text-ink-muted">{f.reason}</p>}
-                    </button>
+                    {jump ? (
+                      <button
+                        type="button"
+                        onClick={jump}
+                        className={`w-full rounded-control border border-border p-3 text-left text-sm transition-colors hover:border-primary/40 hover:bg-surface ${FOCUS_RING} focus-visible:ring-offset-0`}
+                      >
+                        {body}
+                      </button>
+                    ) : (
+                      <div className="rounded-control border border-border p-3 text-sm">{body}</div>
+                    )}
                   </li>
                 );
               })}

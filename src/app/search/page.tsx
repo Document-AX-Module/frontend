@@ -57,9 +57,9 @@ export default function RagSearchPage() {
 
               {/* Citations */}
               <div className="mt-3">
-                <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-ink-muted">
-                  출처
-                </p>
+                {/* `uppercase` is a no-op on 출처; the wide tracking only
+                    loosened it. Both dropped. */}
+                <p className="mb-2 text-xs font-semibold text-ink-muted">출처</p>
                 <ul className="flex flex-col gap-2">
                   {sources.map((s, i) => (
                     <li

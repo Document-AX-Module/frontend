@@ -75,7 +75,7 @@ export function FolderTree({
   return (
     <div className="rounded-xl border border-border bg-canvas p-3">
       <div className="mb-2 flex items-center justify-between px-1">
-        <span className="text-xs font-semibold uppercase tracking-wider text-ink-muted">폴더</span>
+        <span className="text-xs font-semibold text-ink-muted">폴더</span>
         <button type="button" onClick={onNew} className="text-sm text-primary hover:underline" aria-label="새 폴더">
           ＋
         </button>
