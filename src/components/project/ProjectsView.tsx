@@ -48,8 +48,8 @@ export function ProjectsView() {
 
   const { loading: authLoading } = useAuth();
 
-  // Wait for the auth session (access token) before fetching, so reloads don't
-  // race the token refresh and flash a spurious "login required".
+  // 인증 세션(access token) 확인 후에 fetch해서, 새로고침 시 토큰 갱신과 경합해
+  // "로그인 필요"가 잘못 깜빡이지 않게 한다.
   useEffect(() => {
     if (authLoading) return;
     // eslint-disable-next-line react-hooks/set-state-in-effect

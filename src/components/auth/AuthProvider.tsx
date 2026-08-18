@@ -22,9 +22,8 @@ export function useAuth() {
 }
 
 /**
- * Hydrates the session on mount by exchanging the refresh cookie for an access
- * token, then loading the current user. With no backend running it simply
- * resolves to `user: null` — the app keeps working in its mock state.
+ * 마운트 시 refresh 쿠키를 access token으로 교환한 뒤 현재 사용자를 불러와 세션을
+ * 초기화한다. 백엔드가 없으면 그냥 `user: null`로 정리되어 앱은 mock 상태로 동작한다.
  */
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);

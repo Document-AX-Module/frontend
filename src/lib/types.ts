@@ -1,10 +1,10 @@
 /*
- * Shared API types — mirror the backend's Pydantic schemas (sidepjt/backend).
- * Keep in sync manually; the two repos aren't linked by a shared type package.
+ * 공용 API 타입 — 백엔드의 Pydantic 스키마(sidepjt/backend)를 그대로 반영.
+ * 두 저장소가 타입 패키지로 연결돼 있지 않으므로 수동으로 동기화할 것.
  */
 
-/* --- Auth (mirrors backend app/schemas/auth.py) --- */
-/** `GET /auth/providers` returns provider keys, e.g. ["google"] / ["mock"]. */
+/* --- Auth (백엔드 app/schemas/auth.py 반영) --- */
+/** `GET /auth/providers`는 provider 키 목록을 반환 (예: ["google"] / ["mock"]). */
 export type ProvidersResponse = { providers: string[] };
 
 export type User = {
@@ -31,7 +31,7 @@ export type DocStatus =
   | "READY"
   | "FAILED";
 
-/* Mirror backend app/schemas/project.py · folder.py · document.py (snake_case). */
+/* 백엔드 app/schemas/project.py · folder.py · document.py 반영 (snake_case). */
 export type Project = {
   id: number;
   name: string;
@@ -80,10 +80,10 @@ export type DocumentVersion = {
 };
 
 /**
- * Mirror backend `RecentDocumentRead` — a flattened view for the dashboard's
- * "최근 문서" card, so the project path and status badge need no extra request.
- * `processing_status` is the current version's (falling back to `UPLOADED` when
- * there is no version yet), *not* `documents.status`.
+ * 백엔드 `RecentDocumentRead` 반영 — 대시보드 "최근 문서" 카드용 평탄화된 뷰라서
+ * 프로젝트 경로와 상태 배지를 추가 요청 없이 그릴 수 있다.
+ * `processing_status`는 `documents.status`가 아니라 현재 버전의 상태이며,
+ * 버전이 아직 없으면 `UPLOADED`로 대체된다.
  */
 export type RecentDocument = {
   id: number;
@@ -98,7 +98,7 @@ export type VersionStatus = { version_id: number; status: string; progress: numb
 
 export type DocumentUploadResponse = { document: Document; version: DocumentVersion };
 
-/* Mirror backend SectionRead. */
+/* 백엔드 SectionRead 반영. */
 export type Section = {
   id: number;
   document_version_id: number;
@@ -112,8 +112,8 @@ export type Section = {
   meta: Record<string, unknown> | null;
 };
 
-/* --- AI modules --- */
-/* Proofread (mirrors backend app/schemas/proofread.py) */
+/* --- AI 모듈 --- */
+/* 오타 검증 (백엔드 app/schemas/proofread.py 반영) */
 export type ProofreadFinding = {
   original: string;
   suggestion: string;
@@ -209,20 +209,8 @@ export type ActivityItem = {
   target: string;
   kind: string;
   at: string;
-  /**
-   * `document` | `project` | `folder` | null. **Not a link target on its own** —
-   * ids are per-table, so a `project` row's `targetId` collides with an unrelated
-   * live document id. Always pair with `targetType`.
-   */
   targetType: string | null;
   targetId: number | null;
-  /**
-   * Whether the target row still existed **when the response was built**. The id
-   * is kept even for deleted targets (an audit log's "document 8 was deleted" is
-   * a different fact from "no target"), so this is the liveness signal.
-   * Snapshot only — a concurrent delete between response and click still 404s,
-   * which the detail page's error banner absorbs.
-   */
   targetAlive: boolean;
 };
 

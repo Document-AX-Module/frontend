@@ -8,7 +8,7 @@ export function Topbar() {
 
   return (
     <header className="flex h-14 shrink-0 items-center gap-4 border-b border-border bg-canvas px-6">
-      {/* Global document/RAG search box (skeleton — non-functional) */}
+      {/* 전역 문서/RAG 검색창 (스켈레톤 — 아직 미동작) */}
       <div className="flex h-9 w-full max-w-md items-center gap-2 rounded-lg border border-border bg-surface px-3 text-ink-muted">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
           <circle cx="11" cy="11" r="7" />

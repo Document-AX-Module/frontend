@@ -9,20 +9,17 @@ export function getVersion(versionId: string) {
   return api.get<DocumentVersion>(`/versions/${versionId}`);
 }
 
-/** Parsed sections — powers the outline and the document viewer. */
+/** 파싱된 섹션 목록 — 아웃라인과 문서 뷰어의 기반 데이터. */
 export function getSections(versionId: number) {
   return api.get<Section[]>(`/versions/${versionId}/sections`);
 }
 
-/** Lightweight status for polling while a document is processed. */
+/** 문서 처리 중 폴링용 경량 상태 값. */
 export function getVersionStatus(versionId: number) {
   return api.get<VersionStatus>(`/versions/${versionId}/status`);
 }
 
-/**
- * Poll version status until READY/FAILED. Returns the terminal status.
- * Intended for the upload → processing UX; swap for SSE later.
- */
+/** 버전 상태가 READY/FAILED가 될 때까지 폴링하고 최종 상태를 반환. 업로드 → 처리 UX용, 추후 SSE로 대체 예정. */
 export async function pollUntilReady(
   versionId: number,
   { intervalMs = 2000, timeoutMs = 300_000 }: { intervalMs?: number; timeoutMs?: number } = {},

@@ -9,7 +9,7 @@ const sources = [
 export default function RagSearchPage() {
   return (
     <div className="mx-auto grid h-full max-w-6xl grid-cols-1 gap-4 lg:grid-cols-[220px_1fr]">
-      {/* Search scope */}
+      {/* 검색 범위 */}
       <aside className="rounded-xl border border-border bg-canvas p-4">
         <h2 className="text-sm font-semibold text-ink">검색 범위</h2>
         <ul className="mt-3 flex flex-col gap-1">
@@ -31,17 +31,17 @@ export default function RagSearchPage() {
         </p>
       </aside>
 
-      {/* Chat / answer area */}
+      {/* 채팅 / 답변 영역 */}
       <section className="flex min-h-0 flex-col rounded-xl border border-border bg-canvas">
         <div className="flex-1 overflow-y-auto p-6">
-          {/* User question */}
+          {/* 사용자 질문 */}
           <div className="flex justify-end">
             <div className="max-w-md rounded-2xl rounded-tr-sm bg-primary px-4 py-2.5 text-sm text-white">
               개인정보 파기 관련해서 지난 회의에서 어떤 얘기가 나왔어?
             </div>
           </div>
 
-          {/* AI answer */}
+          {/* AI 답변 */}
           <div className="mt-5 flex gap-3">
             <span className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-ink text-xs font-semibold text-white">
               AI
@@ -55,10 +55,9 @@ export default function RagSearchPage() {
                 2. 파기 이력 관리 및 별도 절차 적용
               </div>
 
-              {/* Citations */}
+              {/* 출처 */}
               <div className="mt-3">
-                {/* `uppercase` is a no-op on 출처; the wide tracking only
-                    loosened it. Both dropped. */}
+                {/* `uppercase`는 "출처"(한글)에 아무 효과가 없고 넓은 자간만 헐렁하게 만들어 둘 다 제거. */}
                 <p className="mb-2 text-xs font-semibold text-ink-muted">출처</p>
                 <ul className="flex flex-col gap-2">
                   {sources.map((s, i) => (
@@ -79,7 +78,7 @@ export default function RagSearchPage() {
           </div>
         </div>
 
-        {/* Input */}
+        {/* 입력창 */}
         <div className="border-t border-border p-3">
           <div className="flex items-center gap-2 rounded-xl border border-border bg-surface px-3 py-2">
             <input

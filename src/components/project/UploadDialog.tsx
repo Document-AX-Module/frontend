@@ -45,8 +45,8 @@ export function UploadDialog({
   onCancel: () => void;
   onUpload: (input: UploadInput) => void;
 }) {
-  // Mounted fresh each time it opens (parent conditionally renders), so plain
-  // initial state is enough — no reset effect needed.
+  // 열릴 때마다 새로 마운트되므로(부모가 조건부 렌더링) 초기 상태만으로 충분하고
+  // 별도의 리셋 effect는 필요 없다.
   const [file, setFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [textPreview, setTextPreview] = useState<string | null>(null);
@@ -57,7 +57,7 @@ export function UploadDialog({
   const [localError, setLocalError] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
-  // Revoke the object URL when it changes / on unmount.
+  // object URL이 바뀌거나 언마운트될 때 해제.
   useEffect(() => {
     return () => {
       if (previewUrl) URL.revokeObjectURL(previewUrl);
@@ -78,7 +78,7 @@ export function UploadDialog({
     setFile(f);
     setName((prev) => prev || stripExt(f.name));
 
-    // Preview
+    // 미리보기
     setPreviewUrl((old) => {
       if (old) URL.revokeObjectURL(old);
       return f.type.startsWith("image/") || ext === "pdf" ? URL.createObjectURL(f) : null;
@@ -115,7 +115,7 @@ export function UploadDialog({
   return (
     <Modal open={open} onClose={onCancel} title="문서 업로드">
       <div className="flex flex-col gap-4">
-        {/* File picker / preview */}
+        {/* 파일 선택 / 미리보기 */}
         {!file ? (
           <button
             type="button"
@@ -158,7 +158,7 @@ export function UploadDialog({
               </button>
             </div>
 
-            {/* Preview body */}
+            {/* 미리보기 본문 */}
             {previewUrl && file.type.startsWith("image/") && (
               // eslint-disable-next-line @next/next/no-img-element
               <img src={previewUrl} alt="미리보기" className="mt-3 max-h-48 w-full rounded-lg object-contain" />
@@ -208,7 +208,7 @@ export function UploadDialog({
           </Select>
         </Field>
 
-        {/* `description` is a real `documents` column; upload accepts it. */}
+        {/* `description`은 `documents` 테이블의 실제 컬럼이며 업로드 시 함께 저장된다. */}
         <Field label="설명" htmlFor="upload-description" hint="선택 항목입니다.">
           <Textarea
             id="upload-description"

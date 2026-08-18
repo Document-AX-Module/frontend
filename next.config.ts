@@ -2,10 +2,9 @@ import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
   turbopack: {
-    // Pin the workspace root to this project so Turbopack doesn't pick up a
-    // stray package-lock.json in a parent directory (e.g. ~ or the AX-Module root).
     root: __dirname,
   },
+  allowedDevOrigins: ["localhost", "127.0.0.1", "192.168.0.32", "192.168.0.32.nip.io"],
 };
 
 export default nextConfig;

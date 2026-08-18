@@ -7,19 +7,19 @@ import type {
   RelatedDocument,
 } from "./types";
 
-/** Run proofread on the document's current version → persisted analysis result. */
+/** 문서의 현재 버전에 대해 오타 검증을 실행 → 저장된 분석 결과 반환. */
 export function proofread(docId: string) {
   return api.post<ProofreadResult>(`/documents/${docId}/proofread`);
 }
 
-/** AI analysis history (metadata only). */
+/** AI 분석 이력 (메타데이터만). */
 export function listAnalyses(docId: string, type?: string) {
   return api.get<AnalysisSummary[]>(
     `/documents/${docId}/analyses${type ? `?type=${type}` : ""}`,
   );
 }
 
-/** Full analysis result (with findings). */
+/** findings를 포함한 전체 분석 결과. */
 export function getAnalysis(docId: string, analysisId: number) {
   return api.get<ProofreadResult>(`/documents/${docId}/analyses/${analysisId}`);
 }

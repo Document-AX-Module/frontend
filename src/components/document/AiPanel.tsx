@@ -8,7 +8,7 @@ import { Button, FOCUS_RING } from "@/components/ui/primitives";
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
-/* AI module tabs — only proofread is wired to the backend so far. */
+/* AI 모듈 탭 — 지금은 오타 검증만 백엔드에 연동됨. */
 const tabs = [
   { key: "proofread", label: "오타 검증" },
   { key: "validation", label: "규정 검증" },
@@ -28,7 +28,7 @@ function cat(c: string) {
   return CATEGORY[c] ?? { label: c, className: "bg-surface-2 text-ink-muted" };
 }
 
-/** Statuses where the document isn't parsed yet — proofread would 409. */
+/** 아직 파싱이 끝나지 않은 상태 — 이때 오타 검증을 실행하면 409가 난다. */
 const NOT_READY = ["UPLOADED", "PARSING"];
 
 export function AiPanel({
@@ -87,14 +87,14 @@ function ProofreadPanel({
   const [running, setRunning] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const ready = !NOT_READY.includes(status);
-  // Cancellation token for the in-flight poll loop.
+  // 진행 중인 폴링 루프를 취소하기 위한 토큰.
   const pollRef = useRef<{ cancelled: boolean } | null>(null);
 
   function stopPolling() {
     if (pollRef.current) pollRef.current.cancelled = true;
   }
 
-  /** Poll an analysis until it COMPLETED/FAILED (proofread runs async, 202 → RUNNING). */
+  /** 분석이 COMPLETED/FAILED가 될 때까지 폴링 (오타 검증은 비동기 실행, 202 → RUNNING). */
   async function poll(analysisId: number) {
     stopPolling();
     const token = { cancelled: false };
@@ -116,10 +116,10 @@ function ProofreadPanel({
         return;
       }
     }
-    setRunning(false); // timed out
+    setRunning(false); // 시간 초과
   }
 
-  // Load the most recent analysis; resume polling if it's still running.
+  // 가장 최근 분석을 불러오고, 아직 실행 중이면 폴링을 재개한다.
   useEffect(() => {
     let cancelled = false;
     listAnalyses(docId, "proofread")
@@ -148,7 +148,7 @@ function ProofreadPanel({
     setRunning(true);
     setError(null);
     try {
-      const started = await proofread(docId); // 202 → RUNNING record
+      const started = await proofread(docId); // 202 → RUNNING 레코드
       setResult(started);
       if (started.status === "COMPLETED" || started.status === "FAILED") {
         setRunning(false);
@@ -210,8 +210,7 @@ function ProofreadPanel({
 
             <ul className="flex flex-col gap-2">
               {result.findings.map((f, i) => {
-                /* Pass the reported phrase so the viewer can mark the words
-                   themselves rather than flashing the whole section. */
+                /* 지적된 문구를 넘겨줘서 뷰어가 섹션 전체가 아니라 해당 단어만 표시하게 한다. */
                 const jump =
                   f.section_id != null && onFocusSection
                     ? () => onFocusSection(f.section_id!, f.original)

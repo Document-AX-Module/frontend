@@ -21,7 +21,7 @@ export function deleteProject(projectId: string) {
   return api.delete<void>(`/projects/${projectId}`);
 }
 
-/* --- folders --- */
+/* --- 폴더 --- */
 export function listFolders(projectId: string) {
   return api.get<Folder[]>(`/projects/${projectId}/folders`);
 }

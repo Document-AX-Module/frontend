@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { getProviders, loginWith } from "@/lib/auth";
 
-/** Fallback so the screen renders even if /auth/providers isn't reachable. */
+/** /auth/providers에 접근하지 못해도 화면이 렌더링되도록 하는 대체값. */
 const FALLBACK = ["google"];
 
 const PROVIDER_META: Record<string, { name: string; icon: string }> = {
@@ -28,18 +28,18 @@ export default function LoginPage() {
   return (
     <div className="grid min-h-screen place-items-center bg-surface px-4">
       <div className="w-full max-w-sm">
-        {/* Brand */}
+        {/* 브랜드 */}
         <div className="mb-8 flex flex-col items-center gap-3">
           <span className="grid h-12 w-12 place-items-center rounded-xl bg-primary text-lg font-bold text-white">
             AX
           </span>
           <div className="text-center">
-            <h1 className="text-xl font-semibold tracking-tight text-ink">AX Document Platform</h1>
+            <h1 className="text-xl font-semibold tracking-tight text-ink">사이드 프로젝트</h1>
             <p className="mt-1 text-sm text-ink-muted">계속하려면 로그인하세요.</p>
           </div>
         </div>
 
-        {/* Provider buttons */}
+        {/* Provider 버튼 */}
         <div className="flex flex-col gap-2.5 rounded-2xl border border-border bg-canvas p-6">
           {providers.map((key) => {
             const m = meta(key);

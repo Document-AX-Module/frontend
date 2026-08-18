@@ -6,14 +6,13 @@ import { Sidebar } from "./Sidebar";
 import { Topbar } from "./Topbar";
 import { useAuth } from "@/components/auth/AuthProvider";
 
-/** Routes that render without the app shell (sidebar/topbar). */
+/** 앱 셸(사이드바/톱바) 없이 렌더링되는 라우트. */
 const BARE_PREFIXES = ["/login", "/auth"];
 
 /*
- * Client-side auth guard. The refresh cookie is owned by the backend origin, so
- * the frontend can't gate routes in a proxy/middleware — it must react to the
- * hydrated session instead. Enabled via NEXT_PUBLIC_AUTH_ENABLED so the mock UI
- * stays viewable while auth is off.
+ * 클라이언트 사이드 인증 가드. refresh 쿠키는 백엔드 origin 소유라 프론트가
+ * 프록시/미들웨어로 라우트를 막을 수 없어, hydrate된 세션에 반응하는 방식을 쓴다.
+ * NEXT_PUBLIC_AUTH_ENABLED로 켜고 끌 수 있어 인증이 꺼져 있으면 mock UI가 그대로 보인다.
  */
 const AUTH_ENABLED = process.env.NEXT_PUBLIC_AUTH_ENABLED === "true";
 
@@ -33,7 +32,7 @@ export function AppChrome({ children }: { children: ReactNode }) {
 
   if (bare) return <>{children}</>;
 
-  // Block protected content until the session is known / present.
+  // 세션이 확인/존재할 때까지 보호된 콘텐츠를 막는다.
   if (needsAuth && (loading || !user)) {
     return (
       <div className="grid min-h-screen place-items-center bg-surface text-sm text-ink-muted">

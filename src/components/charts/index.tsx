@@ -1,15 +1,14 @@
 /*
- * Lightweight, dependency-free inline-SVG charts for the dashboard skeleton.
- * Single-hue (brand red) by design — magnitude/trend only, so no categorical
- * palette and no colorblind validation is required. Marks follow the house
- * spec: 2px lines, rounded bar ends, recessive grid, native <title> hover.
+ * 대시보드용 경량 inline-SVG 차트 (의존성 없음). 크기/추세만 표현하므로
+ * 카테고리 팔레트나 색약 검증 없이 브랜드 레드 단색으로 통일했다.
+ * (2px 선, 둥근 막대 끝, 옅은 그리드, 네이티브 <title> 호버)
  */
 
 import { TONE_STYLES, type StatusTone } from "@/components/ui/primitives";
 
 const RED = "#b01c2e";
 
-/* --- Tiny sparkline for stat tiles --- */
+/* --- 통계 타일용 작은 스파크라인 --- */
 export function Sparkline({ data }: { data: number[] }) {
   const W = 72;
   const H = 26;
@@ -34,7 +33,7 @@ export function Sparkline({ data }: { data: number[] }) {
   );
 }
 
-/* --- Weekly processing trend (area + line + dots) --- */
+/* --- 주간 처리 추이 (영역 + 선 + 점) --- */
 export function AreaTrend({
   data,
   labels,
@@ -63,11 +62,8 @@ export function AreaTrend({
   const grid = [0, 0.25, 0.5, 0.75, 1];
 
   return (
-    /*
-     * `<title>` per point gives hover detail, but the chart itself was
-     * unlabelled, so a screen reader announced eight bare numbers with no idea
-     * what they measured.
-     */
+    /* 포인트별 `<title>`은 호버 정보만 줄 뿐, 차트 자체에 라벨이 없으면
+       스크린리더가 의미 없는 숫자 여덟 개만 읽어주므로 aria-label로 보강. */
     <svg
       viewBox={`0 0 ${W} ${H}`}
       className="h-auto w-full"
@@ -83,7 +79,7 @@ export function AreaTrend({
         </linearGradient>
       </defs>
 
-      {/* recessive gridlines */}
+      {/* 옅은 그리드라인 */}
       {grid.map((t) => (
         <line
           key={t}
@@ -106,7 +102,7 @@ export function AreaTrend({
         </g>
       ))}
 
-      {/* x labels */}
+      {/* x축 라벨 */}
       {pts.map((p, i) => (
         <text
           key={i}
@@ -123,7 +119,7 @@ export function AreaTrend({
   );
 }
 
-/* --- Horizontal magnitude bars (single hue) --- */
+/* --- 가로 막대 그래프 (단일 색상) --- */
 export function BarList({
   items,
 }: {
@@ -150,7 +146,7 @@ export function BarList({
   );
 }
 
-/* --- Processing pipeline strip --- */
+/* --- 처리 파이프라인 스트립 --- */
 export function PipelineStrip({
   stages,
 }: {
@@ -158,26 +154,18 @@ export function PipelineStrip({
 }) {
   return (
     /*
-     * One segmented track, not a row of detached blocks. `min-w-[92px]` boxes in
-     * a flex row didn't grow, so the strip stopped at roughly two thirds of the
-     * container and hung left of the full-width sections above and below it.
-     * Segments now share the width, which also retires the connector: abutting
-     * cells read as a sequence on their own, where the old "→" was a text glyph
-     * doing a drawing job that screen readers announced as content.
-     *
-     * `min-w` keeps each segment legible and lets the track scroll instead of
-     * crushing seven labels into a phone's width.
+     * 분리된 블록이 아니라 하나로 이어진 트랙. 세그먼트가 너비를 나눠 가지므로
+     * 맞닿은 셀 자체가 순서를 표현해 화살표 커넥터가 필요 없고, `min-w`로 각
+     * 세그먼트의 가독성을 유지하면서 좁은 화면에서는 스크롤되게 한다.
      */
     <ol className="flex overflow-x-auto rounded-panel border border-border">
       {stages.map((s, i) => (
         <li
           key={s.label}
           /*
-           * An empty segment gets no fill. Six of seven stages are usually
-           * empty, so `TONE_STYLES.idle` would tint most of the track and make
-           * its 12px label a 4.60:1 pair (AA, but with no margin); unfilled, the
-           * same label sits on the card at 5.28:1. It also reads better: the
-           * track is plain and colour appears only where documents actually are.
+           * 빈 세그먼트는 채색하지 않는다. 대부분 비어 있는 단계까지 tone을
+           * 입히면 대비가 AA 턱걸이(4.60:1)가 되지만, 무채색이면 5.28:1로
+           * 더 잘 읽히고 색은 실제 문서가 있는 곳에만 나타나 의미도 분명해진다.
            */
           className={`min-w-[88px] flex-1 px-2 py-2.5 text-center ${
             i > 0 ? "border-l border-border" : ""

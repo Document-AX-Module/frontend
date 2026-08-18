@@ -7,7 +7,7 @@ export type { DocStatus };
 export const FOCUS_RING =
   "outline-none focus-visible:ring-2 focus-visible:ring-primary/45 focus-visible:ring-offset-2 focus-visible:ring-offset-canvas";
 
-/** Error banner. Shows a login link only when the failure is an auth error. */
+/** 에러 배너. 인증 에러일 때만 로그인 링크를 표시한다. */
 export function ErrorBanner({
   message,
   needLogin = false,
@@ -192,7 +192,7 @@ export const TONE_STYLES: Record<StatusTone, string> = {
   fail: "bg-primary-soft text-primary",
 };
 
-/* `DocStatus` mirrors backend `processing_status`. */
+/* `DocStatus`는 백엔드 `processing_status`를 그대로 반영. */
 const STATUS_STYLES: Record<DocStatus, { label: string; tone: StatusTone }> = {
   UPLOADED: { label: "업로드됨", tone: "idle" },
   PARSING: { label: "분석 중", tone: "active" },
@@ -204,7 +204,7 @@ const STATUS_STYLES: Record<DocStatus, { label: string; tone: StatusTone }> = {
   FAILED: { label: "실패", tone: "fail" },
 };
 
-/** Korean label for a processing status, so callers don't re-declare the map. */
+/** 처리 상태의 한글 라벨 — 호출부마다 맵을 다시 선언하지 않도록. */
 export function statusLabel(status: DocStatus | string): string {
   return STATUS_STYLES[status as DocStatus]?.label ?? status;
 }
@@ -214,7 +214,7 @@ export function statusTone(status: DocStatus | string): StatusTone {
 }
 
 export function StatusBadge({ status }: { status: DocStatus | string }) {
-  // Tolerate unknown/raw status strings from the backend.
+  // 백엔드가 알 수 없는/원시 상태 문자열을 보내도 허용한다.
   const known = STATUS_STYLES[status as DocStatus];
   return (
     <span

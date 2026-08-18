@@ -24,7 +24,7 @@ import { useAuth } from "@/components/auth/AuthProvider";
 
 const POLL_MS = 15_000;
 
-/** `weeklyProcessing` buckets by **UTC** day, so the labels must be UTC too. */
+/** `weeklyProcessing`은 **UTC** 기준 일자로 집계되므로 라벨도 UTC 기준이어야 한다. */
 function weekdayLabels(len: number): string[] {
   const names = ["일", "월", "화", "수", "목", "금", "토"];
   const today = new Date();
@@ -37,13 +37,13 @@ function weekdayLabels(len: number): string[] {
 }
 
 /**
- * The backend emits 11 activity kinds, so they fold into four tones. The badge
- * text already names the kind, so colour carries class, not identity. Amber was
- * the first pick for `analysis` but sits ΔE 10.6 from the brand red, under the
- * 15 normal-vision floor; don't reintroduce it alongside `destructive`.
+ * 백엔드가 내려주는 활동 종류는 11가지라 4가지 tone으로 묶는다. 배지 텍스트가 이미
+ * kind 이름을 담고 있으므로 색은 개별 식별이 아니라 분류만 나타내면 된다. `analysis`에
+ * 처음엔 amber를 썼지만 브랜드 레드와 ΔE 10.6으로 정상 시야 기준(15) 미만이라
+ * `destructive`와 함께 쓰지 않도록 뺐다.
  *
- * Activity kinds keep their own map: a kind is an action class, not a pipeline
- * stage, so it must not be folded into `statusTone`.
+ * activity kind는 파이프라인 단계가 아니라 행동 분류이므로 `statusTone`과
+ * 별도의 맵으로 유지한다.
  */
 const TONE = {
   destructive: "bg-primary-soft text-primary",
@@ -67,10 +67,10 @@ const KIND_TONE: Record<string, keyof typeof TONE> = {
 };
 
 /**
- * Both clauses are load-bearing: ids are per-table, so a `project`-typed row's
- * `targetId` would open an unrelated *document* (a silent 200 on the wrong file),
- * and logs outlive their targets, so `targetAlive` is what rules out deleted ones.
- * Deliberately no `kind` check — `kind` is display copy and would break silently.
+ * 두 조건 모두 필수: id는 테이블별로 매겨지므로 `project` 타입 행의 `targetId`가
+ * 무관한 *document*를 열어버릴 수 있고(엉뚱한 파일을 조용히 200으로 열람), 로그는
+ * 대상보다 오래 남으므로 `targetAlive`로 삭제된 대상을 걸러낸다.
+ * `kind`는 표시용 문구일 뿐이라 조용히 깨질 수 있어 의도적으로 검사하지 않는다.
  */
 function canLinkToDocument(a: ActivityItem): a is ActivityItem & { targetId: number } {
   return a.targetType === "document" && a.targetId != null && a.targetAlive;
@@ -120,7 +120,7 @@ export function DashboardView() {
     }
   }, []);
 
-  // Gate on the auth session so a reload doesn't flash a spurious "login required".
+  // 인증 세션 확인 전에는 로드하지 않아 새로고침 시 "로그인 필요"가 잘못 깜빡이지 않게 한다.
   useEffect(() => {
     if (authLoading) return;
     // eslint-disable-next-line react-hooks/set-state-in-effect
@@ -170,8 +170,7 @@ export function DashboardView() {
     <div className="mx-auto flex max-w-6xl flex-col gap-8">
       <header className="flex flex-wrap items-end justify-between gap-4 border-b border-border pb-6">
         <div>
-          {/* `tracking-tight` dropped: see the note in PageHeader. Hangul
-              loses legibility to negative tracking; numerals keep it. */}
+          {/* `tracking-tight` 제거: 한글은 자간을 좁히면 가독성이 떨어져서 뺐다 (숫자는 유지, PageHeader 참고). */}
           <h1 className="text-2xl font-semibold text-ink">
             {name ? `안녕하세요, ${name} 님` : "안녕하세요"}
           </h1>
@@ -259,7 +258,7 @@ export function DashboardView() {
         )}
       </section>
 
-      {/* Recent docs + activity */}
+      {/* 최근 문서 + 최근 활동 */}
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
         <Card>
           <CardHeader>
@@ -359,7 +358,7 @@ export function DashboardView() {
         </Card>
       </div>
 
-      {/* A refresh that fails after the first paint shouldn't wipe the numbers. */}
+      {/* 첫 렌더 이후의 갱신 실패는 이미 표시된 수치를 지우지 않아야 한다. */}
       {error && summary && <ErrorBanner message={error} needLogin={needLogin} />}
     </div>
   );

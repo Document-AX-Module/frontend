@@ -15,8 +15,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "AX Document Platform",
-  description: "프로젝트별 문서를 통합 관리하고 GPT · RAG로 검색 · 분석하는 AI 문서 플랫폼",
+  title: "사이드 프로젝트",
+  description: "프로젝트별 문서를 통합 관리하고 GPT/RAG로 검색/분석하는 AI 문서 플랫폼",
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {

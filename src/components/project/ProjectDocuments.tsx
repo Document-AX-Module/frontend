@@ -42,7 +42,7 @@ export function ProjectDocuments({ projectId }: { projectId: string }) {
   const [needLogin, setNeedLogin] = useState(false);
   const [uploading, setUploading] = useState(false);
 
-  // modal state
+  // 모달 상태
   const [uploadOpen, setUploadOpen] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<Document | null>(null);
   const [deleteBusy, setDeleteBusy] = useState(false);
@@ -57,8 +57,7 @@ export function ProjectDocuments({ projectId }: { projectId: string }) {
     setLoading(true);
     setError(null);
     setNeedLogin(false);
-    // Load independently so a failing project-meta/folders call doesn't wipe out
-    // the document list (and vice versa).
+    // 서로 독립적으로 로드해서 project-meta/folders 실패가 문서 목록을 지우지 않게 한다 (역도 마찬가지).
     const [projR, folR, docR] = await Promise.allSettled([
       getProject(projectId),
       listFolders(projectId),
@@ -68,7 +67,7 @@ export function ProjectDocuments({ projectId }: { projectId: string }) {
     if (folR.status === "fulfilled") setFolders(folR.value);
     if (docR.status === "fulfilled") setDocuments(docR.value);
 
-    // Surface an error only when the documents (the primary content) failed.
+    // 주요 콘텐츠인 문서 목록이 실패했을 때만 에러를 노출한다.
     if (docR.status === "rejected") {
       setError(errorMessage(docR.reason, "문서를 불러오지 못했습니다."));
       setNeedLogin(isAuthError(docR.reason));
@@ -85,7 +84,7 @@ export function ProjectDocuments({ projectId }: { projectId: string }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [projectId, authLoading]);
 
-  /** Poll a version's processing status and reflect it on the row. */
+  /** 버전의 처리 상태를 폴링하며 해당 행에 반영한다. */
   async function pollVersion(documentId: number, versionId: number) {
     for (let i = 0; i < 12; i++) {
       await sleep(2000);
@@ -98,7 +97,7 @@ export function ProjectDocuments({ projectId }: { projectId: string }) {
               : d,
           ),
         );
-        // Pipeline settles at CHUNKED for now (embedding is Phase 9).
+        // 파이프라인은 현재 CHUNKED에서 멈춘다 (embedding은 Phase 9).
         if (s.status === "READY" || s.status === "FAILED" || s.status === "CHUNKED") return;
       } catch {
         return;
@@ -115,7 +114,7 @@ export function ProjectDocuments({ projectId }: { projectId: string }) {
         folder_id: folderId ?? undefined,
         description,
       });
-      // Ensure current_version is present so the status badge reflects the pipeline.
+      // 상태 배지가 파이프라인을 제대로 반영하도록 current_version이 존재하게 보정한다.
       const doc = res.document.current_version
         ? res.document
         : { ...res.document, current_version: res.version };
@@ -186,7 +185,7 @@ export function ProjectDocuments({ projectId }: { projectId: string }) {
     try {
       await deleteFolder(String(id));
       if (activeFolder === id) setActiveFolder(null);
-      // Resync — documents in the folder become unfiled (folder_id → null).
+      // 재동기화 — 폴더 삭제로 그 안의 문서는 미분류가 된다 (folder_id → null).
       const [f, d] = await Promise.all([listFolders(projectId), listDocuments(projectId)]);
       setFolders(f);
       setDocuments(d);
@@ -212,8 +211,7 @@ export function ProjectDocuments({ projectId }: { projectId: string }) {
         <PageHeader
           title={project?.name ?? `프로젝트 #${projectId}`}
           description={`문서 ${documents.length}개`}
-          /* The fullwidth `＋` was a text glyph standing in for an icon; the
-             label already says the button uploads. */
+          /* 전각 `＋` 글리프를 아이콘 대신 쓰던 것을 제거 — 버튼 라벨이 이미 업로드임을 설명한다. */
           actions={<Button onClick={() => setUploadOpen(true)}>문서 업로드</Button>}
         />
       </div>
@@ -221,7 +219,7 @@ export function ProjectDocuments({ projectId }: { projectId: string }) {
       {error && <ErrorBanner message={error} needLogin={needLogin} />}
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-[220px_1fr]">
-        {/* Folder tree */}
+        {/* 폴더 트리 */}
         <FolderTree
           folders={folders}
           activeId={activeFolder}
@@ -231,7 +229,7 @@ export function ProjectDocuments({ projectId }: { projectId: string }) {
           onDelete={setFolderDeleteTarget}
         />
 
-        {/* Documents */}
+        {/* 문서 목록 */}
         {loading ? (
           <Card className="grid place-items-center py-16 text-sm text-ink-muted">불러오는 중…</Card>
         ) : shown.length === 0 && !error ? (

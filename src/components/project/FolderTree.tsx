@@ -19,7 +19,7 @@ function buildTree(folders: Folder[]): FolderNode[] {
   return roots;
 }
 
-/** Flattened depth-first list for indented <select> options. */
+/** 들여쓰기된 <select> 옵션용으로 depth-first 평탄화한 목록. */
 export function flattenFolders(folders: Folder[]): { id: number; name: string; depth: number }[] {
   const out: { id: number; name: string; depth: number }[] = [];
   const walk = (ns: FolderNode[], depth: number) => {
@@ -32,7 +32,7 @@ export function flattenFolders(folders: Folder[]): { id: number; name: string; d
   return out;
 }
 
-/** A folder id plus all of its descendants — for "include subfolders" filtering. */
+/** 폴더 id와 그 하위 폴더 전체 — "하위 폴더 포함" 필터링용. */
 export function descendantIds(folderId: number, folders: Folder[]): Set<number> {
   const childrenOf = new Map<number, number[]>();
   folders.forEach((f) => {

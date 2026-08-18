@@ -1,15 +1,21 @@
 /*
- * Typed fetch wrapper for the AX backend.
- * - Base URL from NEXT_PUBLIC_API_BASE_URL (+ /api/v1), defaults to localhost:8000.
- * - Injects `Authorization: Bearer <access>` and sends cookies (refresh token).
- * - On 401, transparently refreshes the access token once and retries.
- */
+ * AX 백엔드용 타입 fetch 래퍼.
+*/
 
-const BASE_URL =
-  (process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:8000").replace(/\/$/, "") +
-  "/api/v1";
+const API_PORT = process.env.NEXT_PUBLIC_API_PORT ?? "8000";
 
-/* --- access token lives in memory (refresh token is an httpOnly cookie) --- */
+function computeApiOrigin(): string {
+  const override = process.env.NEXT_PUBLIC_API_BASE_URL;
+  if (override) return override.replace(/\/$/, "");
+  if (typeof window !== "undefined") {
+    return `${window.location.protocol}//${window.location.hostname}:${API_PORT}`;
+  }
+  return `http://localhost:${API_PORT}`;
+}
+
+const BASE_URL = computeApiOrigin() + "/api/v1";
+
+/* --- access token은 메모리에만 보관 (refresh token은 httpOnly 쿠키) --- */
 let accessToken: string | null = null;
 export function setAccessToken(token: string | null) {
   accessToken = token;
@@ -27,12 +33,12 @@ export class ApiError extends Error {
   }
 }
 
-/** True only for auth failures (401/403) — used to decide whether to prompt login. */
+/** 인증 실패(401/403)일 때만 true — 로그인 유도 여부 판단에 사용. */
 export function isAuthError(e: unknown): boolean {
   return e instanceof ApiError && (e.status === 401 || e.status === 403);
 }
 
-/** Human-readable message from any thrown value. */
+/** 어떤 예외든 사람이 읽을 수 있는 메시지로 변환. */
 export function errorMessage(e: unknown, fallback: string): string {
   return e instanceof ApiError ? e.message : fallback;
 }
@@ -59,9 +65,9 @@ async function tryRefresh(): Promise<boolean> {
 
 type RequestOptions = Omit<RequestInit, "body"> & {
   body?: unknown;
-  /** multipart/form-data upload — pass a FormData as body and set this true */
+  /** multipart/form-data 업로드 — body에 FormData를 넣고 이 값을 true로 설정 */
   form?: boolean;
-  /** internal: prevents infinite refresh recursion */
+  /** 내부용: refresh 재귀 무한 반복 방지 */
   _retried?: boolean;
 };
 
@@ -73,7 +79,7 @@ export async function request<T>(path: string, options: RequestOptions = {}): Pr
 
   let payload: BodyInit | undefined;
   if (form) {
-    payload = body as FormData; // browser sets multipart boundary
+    payload = body as FormData; // multipart boundary는 브라우저가 자동 설정
   } else if (body !== undefined) {
     finalHeaders.set("Content-Type", "application/json");
     payload = JSON.stringify(body);
@@ -86,7 +92,7 @@ export async function request<T>(path: string, options: RequestOptions = {}): Pr
     credentials: "include",
   });
 
-  // Refresh-and-retry once on 401 (except for the refresh call itself).
+  // 401 응답 시 (refresh 요청 자체는 제외) 토큰 갱신 후 한 번 재시도.
   if (res.status === 401 && !_retried && path !== REFRESH_PATH) {
     if (await tryRefresh()) {
       return request<T>(path, { ...options, _retried: true });
@@ -99,7 +105,7 @@ export async function request<T>(path: string, options: RequestOptions = {}): Pr
       const data = (await res.json()) as { detail?: string };
       if (data.detail) detail = data.detail;
     } catch {
-      /* non-JSON error body */
+      /* JSON이 아닌 에러 응답 */
     }
     throw new ApiError(res.status, detail);
   }

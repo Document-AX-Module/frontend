@@ -104,7 +104,7 @@ export function DocumentDetail({ docId }: { docId: string }) {
     null;
   const status = version?.processing_status ?? "";
 
-  // Auto-refresh while the document is still processing.
+  // 문서가 아직 처리 중이면 자동으로 새로고침한다.
   useEffect(() => {
     if (!status || POLL_STOP.includes(status)) return;
     const t = setInterval(() => load(true), 3000);
@@ -128,7 +128,7 @@ export function DocumentDetail({ docId }: { docId: string }) {
   }
   const titleOf = (s: Section) => s.title?.trim() ?? "";
   const hasTitle = (s: Section) => titleOf(s).length > 0;
-  // Outline only lists real headings (titled sections), not every paragraph.
+  // 아웃라인에는 모든 단락이 아니라 제목이 있는 실제 헤딩만 나열한다.
   const outline = useMemo(
     () => ordered.filter((s) => (s.title?.trim() ?? "").length > 0),
     [ordered],
@@ -178,14 +178,13 @@ export function DocumentDetail({ docId }: { docId: string }) {
 
   return (
     <div className="mx-auto flex h-full max-w-7xl flex-col gap-4">
-      {/* Header */}
+      {/* 헤더 */}
       <div className="flex flex-col gap-3">
         <BackLink href={`/projects/${doc.project_id}`}>
           {project?.name ?? `프로젝트 #${doc.project_id}`}
         </BackLink>
         <div className="flex flex-wrap items-center gap-2.5">
-          {/* No `tracking-tight`: document names are usually Hangul, which loses
-              legibility to negative tracking rather than gaining compactness. */}
+          {/* `tracking-tight` 미사용: 문서명은 대부분 한글이라 자간을 좁히면 밀도보다 가독성 손실이 크다. */}
           <h1 className="text-xl font-semibold text-ink">{doc.name}</h1>
           {version && <Tag>V{version.version_no}</Tag>}
           {doc.document_type && <Tag>{doc.document_type}</Tag>}
@@ -204,9 +203,9 @@ export function DocumentDetail({ docId }: { docId: string }) {
 
       {error && <ErrorBanner message={error} needLogin={needLogin} />}
 
-      {/* 3-pane: outline · viewer · AI panel */}
+      {/* 3분할: 아웃라인 · 뷰어 · AI 패널 */}
       <div className="grid min-h-0 flex-1 grid-cols-1 gap-4 lg:grid-cols-[200px_1fr_380px]">
-        {/* Metadata (always visible) on top · outline scrolls below */}
+        {/* 상단은 메타데이터(항상 표시) · 아래는 스크롤되는 아웃라인 */}
         <div className="hidden min-h-0 flex-col gap-4 lg:flex">
           <div className="shrink-0 rounded-panel border border-border bg-canvas p-4">
             <PaneLabel>메타데이터</PaneLabel>
@@ -262,7 +261,7 @@ export function DocumentDetail({ docId }: { docId: string }) {
           </div>
         </div>
 
-        {/* Viewer */}
+        {/* 뷰어 */}
         <div className="min-h-0 overflow-y-auto rounded-panel border border-border bg-canvas p-8">
           {ordered.length === 0 ? (
             <div className="grid h-full place-items-center py-16 text-center">
@@ -320,7 +319,7 @@ export function DocumentDetail({ docId }: { docId: string }) {
           )}
         </div>
 
-        {/* AI panel — proofread is wired; other modules are placeholders */}
+        {/* AI 패널 — 오타 검증만 연동됨, 나머지 모듈은 placeholder */}
         <div className="min-h-0 overflow-hidden rounded-panel border border-border bg-canvas">
           <AiPanel docId={docId} status={status} onFocusSection={focusSection} />
         </div>
