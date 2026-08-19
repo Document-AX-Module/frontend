@@ -3,7 +3,8 @@
     "allow": [
       "Bash(rm -f src/lib/spellCheck.ts)",
       "Bash(rmdir src/lib)",
-      "Bash(mkdir -p src/components/layout src/components/ui src/components/document)"
+      "Bash(mkdir -p src/components/layout src/components/ui src/components/document)",
+      "Bash(PYTHONIOENCODING=utf-8 python \"C:\\\\Users\\\\pcn\\\\AppData\\\\Local\\\\Temp\\\\claude\\\\c--Users-pcn-Desktop-sidepjt-frontend\\\\f09ef105-e9d8-4785-987d-0c086446e7e1\\\\scratchpad\\\\shot4.py\")"
     ]
   }
 }
