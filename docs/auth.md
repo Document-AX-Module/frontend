@@ -13,6 +13,15 @@ OAuth2 플로우는 **백엔드가 돌린다**(`google` + 개발용 `mock` 프�
 
 `/me`에는 아바타가 없어서 `initialsOf()`가 이름/이메일에서 이니셜을 파생한다.
 
+부트스트랩은 **반드시 끝난다**. 아래 세 겹이 그걸 보장하는데, `loading`이 true로 남으면 아래
+게이팅 규칙 때문에 앱 전체가 스켈레톤에 갇혀 에러조차 못 띄우기 때문이다.
+
+1. 두 요청 모두 `timeoutMs: 8000`으로 끊는다 (`bootstrapSession`).
+2. 실패는 `bootstrapSession`이 삼켜 `user: null`을 돌려준다 (`AuthProvider`도 `.catch()`로 방어).
+3. `AuthProvider`는 `.finally()`에서 `loading`을 풀고, 그래도 안 풀리면 10초 failsafe 타이머가 푼다.
+
+이후 컴포넌트 fetch가 401이나 408을 받아 각자의 `ErrorBanner`를 띄우게 된다.
+
 ## 로그인 / 로그아웃
 
 - `/login` → `getProviders()`로 프로바이더 버튼을 그림 → `loginWith(provider)`가 백엔드로 이동

@@ -20,8 +20,12 @@
   셸 없이 children만 렌더한다.
 - `Sidebar` 내비: `/`(대시보드) · `/projects` · `/search`(RAG 검색) · `/embedding-lab`.
   **마이페이지는 사이드바가 아니라 `Topbar` 계정 메뉴**에서 들어간다.
-- `Topbar`의 검색 입력과 알림 벨은 아직 **비배선 스텁**이다(백엔드 `/search`, `/notifications`
-  미구현 → [roadmap.md](roadmap.md)).
+- `Topbar`의 검색 입력은 `GET /documents/search?q=`에 배선됐다(300ms debounce, 프로젝트 교차
+  이름/설명 검색 → [api-spec.md](api-spec.md)). 알림 벨은 `NotificationBell`이다 — 백엔드에
+  SSE/WebSocket이 없어 **폴링**으로 미읽음 수를 갱신하고, 서비스워커가 푸시를 받으면
+  `postMessage`로 즉시 갱신한다 → [features/notifications.md](features/notifications.md).
+- **PWA**: `src/app/manifest.ts`(`display: standalone`) + `public/sw.js`. Turbopack에서 `next-pwa`를
+  쓸 수 없어 매니페스트와 서비스워커를 직접 관리한다(오프라인 프리캐시 없음).
 - 폰트는 `layout.tsx`에서 주입한다: 한글 UI는 로컬 가변 폰트 **Pretendard**(`--font-pretendard`),
   숫자/영문 등폭은 `Geist Mono`(`--font-geist-mono`). Geist Sans는 라틴 전용이라 한글이 시스템
   고딕으로 폴백돼 톤이 어긋나서 걷어냈다.
@@ -50,10 +54,17 @@
   `Authorization: Bearer <access>`를 주입하고, 쿠키를 보내고, **401이면 refresh를 한 번 하고
   재시도**한다. `ApiError`, `isAuthError`(401/403만), `errorMessage`,
   `getAccessToken`/`setAccessToken`를 내보낸다.
+  모든 요청에 **기본 15초 타임아웃**(`DEFAULT_TIMEOUT_MS`, 응답 본문을 다 읽을 때까지 유지)이
+  걸리고 초과하면 `ApiError(408, "서버 응답이 없습니다…")`가 된다 — 응답 없는 fetch가 영원히
+  pending으로 남아 로딩 상태를 잠그는 것을 막는다. `timeoutMs`로 호출부에서 조절하고
+  (`0`이면 해제), `form: true` 업로드는 파일 크기 때문에 기본이 `0`이다.
 - `types.ts` — 공용 타입 (`Project`, `Folder`, `Document`, `DocumentVersion`, `Section`,
-  `DocStatus`, `ProofreadResult`, `ActivityItem`, `MyPageSummary` …).
-- 도메인 클라이언트: `auth.ts`, `projects.ts`, `documents.ts`, `versions.ts`, `ai.ts`,
-  `dashboard.ts`, `mypage.ts`, `rag.ts`(목업 화면용, 준비만 됨), `embedding.ts`(동일).
+  `DocStatus`, `ProofreadResult`, `ActivityItem`, `MyPageSummary`, `NotificationItem` …).
+- 도메인 클라이언트: `auth.ts`, `projects.ts`, `users.ts`, `documents.ts`, `versions.ts`, `ai.ts`,
+  `dashboard.ts`, `mypage.ts`, `notifications.ts`, `push.ts`,
+  `rag.ts`(목업 화면용, 준비만 됨), `embedding.ts`(동일).
+  `push.ts`만 예외적으로 API 호출 외에 브라우저 API(`ServiceWorker`, `PushManager`,
+  `navigator.setAppBadge`)도 감싼다.
 - `format.ts` — API가 아닌 순수 표시 유틸(`formatFileSize`).
 
 ### 클라이언트 배치 규칙

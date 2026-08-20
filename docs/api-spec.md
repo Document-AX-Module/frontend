@@ -28,13 +28,47 @@
 
 | Method | Endpoint | 배선 |
 |---|---|---|
-| GET/POST | `/projects` | ✅ 목록/생성 (`ProjectsView`) |
-| GET/PATCH/DELETE | `/projects/{id}` | ✅ 상세/삭제 (PATCH 미사용) |
+| GET/POST | `/projects` | ✅ 목록/생성 (`ProjectsView`) — 목록은 접근 가능한(public 전체 + 내 invite + 내 private) 프로젝트만 |
+| GET/PATCH/DELETE | `/projects/{id}` | ✅ 상세/삭제 (이름/설명 PATCH 미사용, DELETE는 owner 전용) |
+| PATCH | `/projects/{id}/visibility` (`{visibility}`, owner 전용) | ✅ `ProjectMembersDialog` 공개 범위 전환 |
+| GET/POST | `/projects/{id}/members` (초대는 `{user_id}` 또는 `{email}`, owner 전용) | ✅ `ProjectMembersDialog` 목록/초대 |
+| DELETE | `/projects/{id}/members/{user_id}` (owner 전용) | ✅ `ProjectMembersDialog` — 제거 **겸** 초대 취소 |
+| GET | `/projects/invitations` → `ProjectInvitationRead[]` | ✅ `ProjectInvitations` (`/projects` 상단 "받은 초대") |
+| POST | `/projects/{id}/invitation/accept` → `ProjectRead` | ✅ 수락 |
+| POST | `/projects/{id}/invitation/decline` (204) | ✅ 거절 |
+| GET | `/users/search?q=&limit=&exclude_project_id=` → `UserSearchResult[]` | ✅ `ProjectMembersDialog` 초대 검색 (`src/lib/users.ts`) |
 | GET/POST | `/projects/{id}/folders` | ✅ 트리/생성 (`FolderTree`) |
-| PATCH/DELETE | `/folders/{id}` | ✅ 이름변경/삭제 |
-| GET | `/projects/{id}/members` | ⏳ |
+| PATCH/DELETE | `/folders/{id}` | ✅ 이름변경(인라인)/삭제 |
+| PATCH | `/folders/{id}/reorder` (`{parent_id?, target_index}` → 영향받은 형제 `FolderRead[]`) | ✅ 사이드바 드래그앤드롭 (`reorderFolder()`) |
 
-- `ProjectRead` = `{id, name, description, created_by, created_at, updated_at}` — 집계(문서수/READY수/members)는 백엔드 미제공이라 목록 카드에서 생략.
+- `ProjectRead` = `{id, name, description, created_by, owner_id, visibility, created_at, updated_at}`.
+  `visibility`는 `public`(전체 공개, 기본값) / `invite`(수락한 멤버만) / `private`(owner만) — 생성
+  폼에서 라디오로 고르고, 배지는 `visibilityLabel()`/`VisibilityBadge`(`primitives.tsx`)로 그린다.
+  문서 수·READY 수 같은 집계는 백엔드 미제공이라 목록 카드에서 계속 생략한다.
+- `ProjectMemberRead` = `{user_id, email, name, role(owner|member), status(pending|active|rejected),
+  invited_by, created_at, responded_at}`. 라벨/배지는
+  `memberStatusLabel()`/`MemberStatusBadge`(`primitives.tsx`)가 유일한 출처다.
+- **초대는 즉시 멤버가 되지 않는다.** `POST .../members`는 **201 + `status: "pending"`** 인 초대장을
+  만들고, 상대가 `/invitation/accept`를 호출해야 접근 권한이 생긴다. 그래서 UI 문구는 "초대함"이
+  아니라 **"수락 대기중"** 이다. `GET .../members`는 `active`뿐 아니라 `pending`/`rejected`도 함께
+  돌려주므로 프론트가 `status`로 뱃지 3종을 그린다.
+- `DELETE .../members/{user_id}` 하나가 **멤버 제거와 초대 취소를 겸한다** — 응답(204)만으로는
+  구분할 수 없으므로 버튼 문구를 호출부가 `status`로 분기한다(`pending`→"초대 취소",
+  `active`→"멤버 제거", `rejected`→"목록에서 지우기"). 어느 쪽이든 행을 지우므로 **재초대가 가능**하고,
+  거절했던 사용자를 다시 초대하면 같은 행이 `pending`으로 되돌아간다.
+- `POST .../members`의 body는 `{user_id}` **또는** `{email}` 정확히 하나다 — 둘 다 보내면 422.
+  프론트는 검색 결과에서 고른 `user_id`만 보낸다.
+- `GET /users/search`는 **최소 2자**(1자면 422), 이름/이메일 부분일치, 비활성 사용자 제외,
+  응답은 `{id, email, name}`뿐이다. `exclude_project_id`를 넘기면 그 프로젝트의 기존 멤버·초대
+  대기자가 결과에서 빠진다(그 필터는 해당 프로젝트를 볼 수 있는 사람만 쓸 수 있어 404/403 가능).
+  프론트는 300ms 디바운스로 호출한다.
+- ⚠️ **미가입자는 초대할 수 없다** — 이메일 초대장 발송 기능이 없어서 검색에 없는 이메일로
+  초대하면 **400**이다. 그래서 초대 UI는 "가입된 사용자만 초대할 수 있습니다"를 명시한다.
+- `ProjectInvitationRead` = `{project_id, project_name, project_description, visibility, invited_by,
+  invited_by_name, invited_by_email, invited_at}`. 수락 전에는 `GET /projects`에 안 나오고
+  `GET /projects/{id}`가 **403**이므로 초대 카드는 **이 응답의 필드만으로** 그려야 한다.
+- ⚠️ **라우트 순서 주의**: `/projects/invitations`가 `/projects/{project_id}` 보다 먼저 등록돼야
+  한다(안 그러면 `invitations`를 int로 파싱하려다 422). §5의 `/documents/recent`와 같은 함정.
 
 ## 3. 문서 / 버전 — `src/lib/documents.ts`, `versions.ts`
 
@@ -48,6 +82,9 @@
 | GET | `/versions/{id}` · `/versions/{id}/status` | ✅ 폴링 |
 | GET | `/versions/{id}/sections` | ✅ 개요/뷰어 |
 | GET | `/versions/{id}/chunks` | 🔶 |
+| GET | `/documents/{id}/diff?from_version_id=&to_version_id=` | ✅ `AiPanel` 문서 비교 탭 (`DiffModal`) |
+| GET | `/documents/search?q=&limit=` | ✅ `Topbar` 전역 검색 (`documents.ts`의 `searchDocuments`) |
+| PATCH | `/documents/{id}/move` (`{project_id?, folder_id?}`) | ✅ `moveDocument()` — `MoveDocumentDialog`(다른 프로젝트) + `FolderTree` 드래그앤드롭(같은 프로젝트 폴더) |
 | PATCH | `/documents/{id}` (RULE 지정 등) | ⏳ |
 
 - **상태**: `UPLOADED·PARSING·PARSED·CHUNKING·CHUNKED·EMBEDDING·READY·FAILED`. 배지는
@@ -55,6 +92,9 @@
   버전이 없으면 `UPLOADED`로 본다. 현재 파이프라인은 `CHUNKED`에서 종착.
 - 오타 검증 **수정본 적용(§4)이 새 버전을 만든다** — 적용 후에는 `current_version`이 바뀌고
   섹션도 재파싱되므로 `section_id`가 달라진다.
+- `/documents/search`는 `/documents/recent`와 응답 shape(`RecentDocumentRead`)이 같지만 최신순이
+  아니라 이름/설명 키워드 매칭 기준이고, 접근 가능한 프로젝트로 결과가 필터링된다. `q`가 비어
+  있으면 프론트에서 아예 호출하지 않는다(백엔드도 `min_length=1`을 요구).
 
 ## 4. AI — `src/lib/ai.ts`, `AiPanel`
 
@@ -65,7 +105,7 @@
 | GET | `/documents/{id}/analyses/{analysis_id}` → findings | ✅ 폴링 대상 |
 | PATCH | `/documents/{id}/analyses/{analysis_id}/findings/{finding_id}` (`{status}`) → 분석 전체 | ✅ 승인/반려/보류 |
 | POST | `/documents/{id}/analyses/{analysis_id}/apply` → `ApplyAnalysisResult` | ✅ 분석 1건당 1회 (재호출 **409**) |
-| POST | `/documents/{id}/classify` · `/validate` · `/related` · `/documents/compare` | ⏳ |
+| POST | `/documents/{id}/classify` · `/validate` · `/related` | ⏳ |
 
 - proofread finding = `{id, original, suggestion, reason, category(spelling/spacing/grammar/expression), status(pending/accepted/rejected), section_id?, page_start/end?}`.
   `id`는 한 분석 안에서만 고정된 위치 기반 값(`f0`, `f1`…). finding 클릭 → 뷰어 `#sec-{section_id}` 스크롤+하이라이트.
@@ -76,6 +116,10 @@
 - provider = `mock`(규칙기반) | `openai`(GPT). 백엔드에 `OPENAI_API_KEY` 넣으면 GPT로 전환.
 
 동작 상세는 [features/proofread.md](features/proofread.md).
+
+`/documents/{id}/diff`는 AI가 아니라 `difflib` 기반 동기 계산이라(§3 참고) 이 절의 나머지와
+성격이 다르다 — 응답이 202/폴링이 아니라 즉시 200이다. 상세는
+[features/document-diff.md](features/document-diff.md).
 
 ## 5. 대시보드 — `src/lib/dashboard.ts`, `DashboardView`
 
@@ -129,12 +173,51 @@
 
 상세는 [features/mypage.md](features/mypage.md).
 
-## 7. 아직 라우터 없음 (⏳)
+## 7. 알림 — `src/lib/notifications.ts`, `NotificationBell`
+
+| Method | Endpoint | 배선 |
+|---|---|---|
+| GET | `/notifications?only_unread=&limit=&offset=` → `{items, unread}` | ✅ 벨 드롭다운 |
+| GET | `/notifications/unread-count` → `{unread}` | ✅ 뱃지 폴링 |
+| POST | `/notifications/{id}/read` → `NotificationRead` | ✅ 항목 클릭 시 (멱등) |
+| POST | `/notifications/read-all` → `{unread: 0}` | ✅ "모두 읽음" |
+
+- `NotificationRead` = `{id, type, title, body, url, meta, read_at, created_at}` (**snake_case**).
+  `read_at`이 null이면 안 읽음.
+- 응답의 `unread`는 `only_unread`/`limit`과 **무관한 전체 미읽음 수**라 `items.length`와 다를 수
+  있고, 벨 뱃지에 그대로 쓴다.
+- `type`은 백엔드에서 자유 문자열이지만 값 집합이 계약이다(6종):
+  `project.invite` · `project.invite_accepted` · `project.invite_declined` ·
+  `project.member_removed` · `analysis.complete` · `analysis.fail`. 활동 피드의 `kind`처럼
+  **프론트가 열거**하며, 라벨/톤은 `notificationTypeLabel()`/`NotificationTypeBadge`가 유일한 출처다.
+- **SSE/WebSocket이 없다** → 벨은 폴링이다: 60초 주기 + `window` focus + 서비스워커 postMessage.
+  푸시를 거부한 사용자도 벨로는 알림을 받는다.
+- `url`은 **프론트 경로 그대로** 쓸 수 있다(`/projects/{id}`, `/documents/{id}` 모두 기존 라우트와
+  일치). null이면 이동 없이 읽음 처리만. **예외 하나**: `project.invite`의 `url`은
+  `/projects/{id}`인데 수락 전에는 그 상세가 403이라, 프론트가 `/projects`(초대 카드 위치)로 돌린다.
+- 남의 알림 id로 호출하면 403이 아니라 **404**다(존재 자체를 알려주지 않음).
+
+## 8. Web Push — `src/lib/push.ts`, `public/sw.js`
+
+| Method | Endpoint | 배선 |
+|---|---|---|
+| GET | `/push/public-key` → `{public_key}` | ✅ 구독 시작 시 |
+| POST | `/push/subscribe` (`{endpoint, keys{p256dh, auth}}`, 204) | ✅ 마이페이지 토글 (같은 endpoint면 upsert) |
+| DELETE | `/push/subscribe` (`{endpoint}`, 204) | ✅ 토글 끄기 — **body가 있는 DELETE** (`api.delete(path, { body })`) |
+
+- 백엔드에 VAPID 키가 없으면 `public_key`가 **빈 문자열**로 온다 → 그때는 구독을 시작하지 않고
+  "서버에 푸시 키가 설정되지 않았습니다"로 끊는다.
+- 푸시 payload는 `{title, body, url, type}` **4개 키로 고정**이다(백엔드 `push_service.py`). 이게
+  서비스워커와의 계약이다 — `tag: type`으로 같은 종류의 알림을 묶고, `data.url`로 클릭 라우팅한다.
+- **서비스워커는 토큰을 다루지 않는다.** 구독 등록/해제는 메인 스레드(`push.ts`)에서 Bearer로 한다.
+
+동작·제약(Turbopack, secure context)은 [features/notifications.md](features/notifications.md).
+
+## 9. 아직 라우터 없음 (⏳)
 
 - RAG `/rag/*` — `rag.ts` 준비됨, 화면은 목업
 - Embedding Lab `/embedding/*` — `embedding.ts` 준비됨, 화면은 목업
-- 전역 검색 `/search?q=` — Topbar 검색 입력이 스텁
-- 알림 `/notifications` — Topbar 벨이 스텁
+- 전역 검색 `/search?q=` — 사이드바 RAG 검색 화면이 목업 (Topbar 검색은 `/documents/search`로 배선됨)
 - `/health` (✅ 존재, 프론트 미사용)
 
 엔드포인트/스키마가 미확정인 백엔드 로드맵 백로그(퀴즈·PPT·알림·즐겨찾기/메모·MCP)는

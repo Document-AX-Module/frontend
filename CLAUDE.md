@@ -40,8 +40,10 @@ that cover the code you are about to touch.
 | [docs/api-spec.md](docs/api-spec.md) | the endpoint contract + wiring status (backend `/openapi.json` is the authority) |
 | [docs/features/projects-documents.md](docs/features/projects-documents.md) | `/projects`, folder tree, upload, document detail & viewer |
 | [docs/features/proofread.md](docs/features/proofread.md) | the AI panel: async proofread, finding review, applying corrections |
+| [docs/features/document-diff.md](docs/features/document-diff.md) | the AI panel's 문서 비교 tab: version picker, `DiffModal` side-by-side render, change-chip navigation |
 | [docs/features/dashboard.md](docs/features/dashboard.md) | `/` stat tiles, charts, pipeline strip, recent documents |
 | [docs/features/activity-feed.md](docs/features/activity-feed.md) | the shared `ActivityFeed` (kind set, badge tones, document links) |
+| [docs/features/notifications.md](docs/features/notifications.md) | the Topbar bell (polling), Web Push (`sw.js`, VAPID, secure context), PWA manifest |
 | [docs/features/mypage.md](docs/features/mypage.md) | `/mypage` |
 | [docs/roadmap.md](docs/roadmap.md) | anything still mock: RAG search, Embedding Lab, other AI tabs; backend/platform context |
 
@@ -58,8 +60,9 @@ Non-negotiables for every change. The reasoning is in the docs above.
 3. **Modals, not native dialogs** — `Modal` / `ConfirmDialog` / `PromptDialog` from
    `src/components/ui/Modal.tsx`, never `alert`/`confirm`/`prompt`.
 4. **Reuse the shared UI** in `src/components/ui/` before writing new markup.
-   `statusLabel()` (backed by `STATUS_STYLES`) is the single source of Korean status labels —
-   never re-declare that map. Use design tokens (`bg-primary`, `text-ink-muted`), not raw hex.
+   `primitives.tsx` owns every enum→Korean-label map (`statusLabel`, `visibilityLabel`,
+   `memberStatusLabel`, `notificationTypeLabel` + their badges) — never re-declare one at a
+   call site. Use design tokens (`bg-primary`, `text-ink-muted`), not raw hex.
 5. **Gate fetches on `authLoading`** from `useAuth()` in every data-loading component, or a
    reload races the token refresh and flashes a spurious "login required".
 6. **Keep `docs/` in sync with the code**: a new/changed endpoint → `docs/api-spec.md`;

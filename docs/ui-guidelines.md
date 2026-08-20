@@ -43,6 +43,8 @@ Tailwind v4 `@theme`에 선언한다. **컴포넌트에서 임의의 hex를 쓰�
   `Textarea`, `Select`
 - 표시: `StatusBadge`, `statusLabel`, `statusTone`, `TONE_STYLES`, `Tag`, `ErrorBanner`
 - `FOCUS_RING` — 포커스 링 유틸 문자열. 커스텀 클릭 요소(타일, 메뉴 항목, 아바타 버튼)에 붙인다.
+- `PageHeader`의 배지는 `titleBadge`로 넘겨 제목 옆에 붙인다. `actions`는 버튼 줄이므로 배지를
+  섞으면 버튼처럼 보여 눌러도 반응이 없는 것처럼 읽힌다.
 - **`STATUS_STYLES`가 한글 상태 라벨의 유일한 출처**다. `statusLabel()`로 읽고 맵을 다시 선언하지
   않는다. 파이프라인 단계 tone(`idle`/`active`/`done`/`fail`)은 `statusTone()`.
 

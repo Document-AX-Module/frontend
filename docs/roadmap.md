@@ -9,12 +9,14 @@
 |---|---|---|
 | RAG 검색 `/search` | `src/lib/rag.ts` 준비됨 | 백엔드 `/rag/*` 미구현 → 화면은 목업 |
 | Embedding Lab `/embedding-lab` | `src/lib/embedding.ts` 준비됨 | 백엔드 `/embedding/*` 미구현 |
-| `AiPanel`의 `규정 검증`·`문서 비교`·`관련 문서` 탭 | `ai.ts`에 함수만 있음 | 백엔드 미구현 |
-| `Topbar` 전역 검색 입력 | 없음 | `/search?q=` 미구현 |
-| `Topbar` 알림 벨 | 없음 | `/notifications` 엔드포인트 미확정 |
+| `AiPanel`의 `규정 검증`·`관련 문서` 탭 | `ai.ts`에 함수만 있음 | 백엔드 미구현 |
 
-`ai.ts`의 `classify`/`validate`/`related`/`compare`는 **호출 코드만 있고 실제로 200을 받은 적이
-없다** — 붙일 때 응답 스키마를 백엔드와 다시 맞춘다.
+`ai.ts`의 `classify`/`validate`/`related`는 **호출 코드만 있고 실제로 200을 받은 적이 없다** —
+붙일 때 응답 스키마를 백엔드와 다시 맞춘다.
+
+여기 있었던 두 항목은 배선이 끝나 빠졌다: **알림 벨 · Web Push**(→
+[features/notifications.md](features/notifications.md))와 **멤버 초대 UX 3종**(사용자 검색 ·
+초대 대기 상태 · 초대 알림 → [features/projects-documents.md](features/projects-documents.md)).
 
 ## AI 기능 모듈
 
@@ -25,7 +27,8 @@
 2. **RAG Chat** — 질문 → 임베딩 → pgvector + full-text 하이브리드 검색 → GPT → 답변 + 인용. ⏳
 3. **문서 자동 분류 (Classification)** — type/category/tags. ⏳
 4. **관련 문서 추천 (Related)** — 임베딩 벡터 검색. ⏳
-5. **Document Diff** — 버전 비교 → GPT 설명. ⏳
+5. **Document Diff (버전 비교)** — ✅ 배선 완료. GPT가 아니라 `difflib` 동기 계산 → 섹션 단위
+   added/deleted/modified/unchanged + 토큰 단위 diff → [document-diff.md](features/document-diff.md)
 6. **규정 검증 (Regulation validation)** — `RULE` 문서를 근거로 retrieval + GPT 검증. ⏳
 
 ## 백엔드 로드맵 백로그 (2026-08-19 기준)
@@ -36,7 +39,6 @@
 - **퀴즈** `/quizzes/*` — RAG Retrieval Engine을 재사용하므로 RAG가 먼저 구현돼야 착수 가능.
 - **PPT 지원** — 새 엔드포인트 없음. 기존 문서/AI 엔드포인트가 PPTX에서도 동작하게 만드는 백엔드
   내부 작업이라, 프론트 변경은 상태 폴링이 `FAILED`가 아니라 정상 파이프라인을 타는 정도.
-- **알림** `/notifications?unread_only=`, `PATCH /notifications/{id}/read` — 엔드포인트 미확정.
 - **즐겨찾기/메모/Notion 연동** `/documents/{id}/favorite`, `/favorites`,
   `/documents/{id}/notes` — 엔드포인트 미확정. 메모가 문서 단위인지 섹션 단위인지도 미정.
 - **MCP 서버** — REST 엔드포인트가 아니라 이 리포와 무관하다. Document Core를 외부 에이전트에
