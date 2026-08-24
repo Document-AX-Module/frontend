@@ -8,6 +8,7 @@
 | 화면 | 클라이언트 | 상태 |
 |---|---|---|
 | RAG 검색 `/search` | `src/lib/rag.ts` 준비됨 | 백엔드 `/rag/*` 미구현 → 화면은 목업 |
+| 퀴즈 `/quiz` | 없음 | 엔드포인트/스키마 미확정(§ 아래 백로그) → 예시 문항만 있는 정적 목업 |
 | Embedding Lab `/embedding-lab` | `src/lib/embedding.ts` 준비됨 | 백엔드 `/embedding/*` 미구현 |
 | 맞춤법 검사기(텍스트 직접 입력) `/proofread` | 없음 | 텍스트를 문서 없이 바로 검사하는 API가 백엔드에 없음 → 입력(Toast UI Editor)만 붙어 있고 검사 결과는 정적 예시 |
 | `AiPanel`의 `규정 검증`·`관련 문서` 탭 | `ai.ts`에 함수만 있음 | 백엔드 미구현 |

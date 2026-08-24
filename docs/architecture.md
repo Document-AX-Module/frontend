@@ -18,8 +18,9 @@
 
 - `AppChrome`이 `Sidebar` + `Topbar` 셸을 그린다. 단, **bare 라우트**(`/login`, `/auth/*`)에서는
   셸 없이 children만 렌더한다.
-- `Sidebar` 내비: `/`(대시보드) · `/projects` · `/search`(RAG 검색) · `/embedding-lab`.
-  **마이페이지는 사이드바가 아니라 `Topbar` 계정 메뉴**에서 들어간다.
+- `Sidebar` 내비: `/`(대시보드) · `/projects`(프로젝트) · `/proofread`(맞춤법 검사기) ·
+  `/search`(RAG) · `/quiz`(퀴즈) · 관리자 섹션의 `/embedding-lab`. **마이페이지는 사이드바가 아니라
+  `Topbar` 계정 메뉴**에서 들어간다.
 - `Topbar`의 검색 입력은 `GET /documents/search?q=`에 배선됐다(300ms debounce, 프로젝트 교차
   이름/설명 검색 → [api-spec.md](api-spec.md)). 알림 벨은 `NotificationBell`이다 — 백엔드에
   SSE/WebSocket이 없어 **폴링**으로 미읽음 수를 갱신하고, 서비스워커가 푸시를 받으면
