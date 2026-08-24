@@ -63,3 +63,49 @@ finding = `{ id, original, suggestion, reason, category, status, section_id?, pa
   없는 죽은 버튼이 된다.
 - **PDF 주의**: 완전 편집이 아니라 시각적 패치로 적용되므로 원본과 폰트가 미세하게 다를 수
   있다 — `fileExt === "pdf"`일 때 그 안내 문구를 버튼 아래에 띄운다.
+
+## 별도 흐름: `/proofread` — 문서 없이 텍스트 검사 → 새 문서로 저장
+
+위 내용은 전부 **이미 등록된 문서**에 대한 `AiPanel` 흐름이다. `/proofread`
+(`src/app/proofread/page.tsx`)는 완전히 다른 진입점으로, Document Core에 아직 등록되지 않은
+텍스트를 검사한 뒤 **새 문서를 만드는** 흐름이다.
+
+- 입력은 Toast UI Editor(`src/components/proofread/TextEditor.tsx`, **markdown 모드**, `previewStyle:
+  "tab"`로 미리보기는 기본 숨김). wysiwyg 모드는 자체 내부 vdom(`innerDiff`/`removeNode`)으로
+  contenteditable을 렌더링하는데, 한글 IME 조합처럼 브라우저가 DOM을 직접 건드리는 상황과 충돌해
+  `Failed to execute 'removeChild' on 'Node'` 크래시를 낸다(`nhn/tui.editor` 저장소의
+  [#2765](https://github.com/nhn/tui.editor/issues/2765)와 동일 증상). `@toast-ui/react-editor`
+  공식 래퍼는 `peerDependencies: react ^17`에 묶여 있어 이 프로젝트의 React 19와 안 맞아 쓸 수
+  없다 — markdown 모드(CodeMirror 기반)로 바꿔 이 내부 렌더러 자체를 안 타게 하는 게 해법이다.
+  서식 있는 편집이 필요 없는 평문 입력창이라 기능 손해도 없다. 검사는
+  `startTextProofread()`(`src/lib/ai.ts`) → `POST /text/proofread`에 `getText()`(plain text)를
+  보내는 **비동기** 호출 — 문서 오타 검증과 동일하게 202 + `RUNNING` job을 받고 폴링한다.
+  finding shape은 `TextProofreadFinding` = `{id, original, suggestion, reason, category}` —
+  `section_id`/`page_start/end`/`status`가 없다(문서·분석에 안 묶임).
+- **승인/반려는 서버에 저장되지 않는다.** `AiPanel`과 같은 pill UI를 재사용하지만, finding
+  상태는 페이지 로컬 state(`Finding = TextProofreadFinding & { status: FindingStatus }`)로만
+  관리한다. `전체 승인`/`전체 선택 해제`(`AiPanel`과 동일한 패턴)로 findings를 일괄 변경할 수도
+  있다.
+- **폴링·재개는 `AiPanel`과 완전히 같은 패턴이다.** `pollRef`의 `{ cancelled }` 토큰으로 취소하고,
+  언마운트 시 `stopPolling()`한다(안 그러면 늦게 도착한 응답이 이미 제거된 DOM을 React가 다시
+  건드리려다 `removeChild` 에러로 이어진다). 마운트 시 `listTextProofreadJobs()`로 내 최근 job을
+  조회해(`listAnalyses`와 같은 역할) `RUNNING`이면 폴링을 재개하고, `COMPLETED`/`FAILED`면 결과를
+  그대로 복원한다 — 검사 중 다른 페이지로 이동해도 서버 쪽 진행 상황은 안 사라진다.
+- **완료/실패 시 알림 + 웹푸시.** 타입 `text_proofread.complete`/`text_proofread.fail`,
+  `url`은 고정 `/proofread`. 알림 벨/푸시 인프라를 그대로 탄다([notifications.md](notifications.md)).
+- **알려진 한계 — 원본 입력 텍스트는 서버에 없다.** `text_proofread_jobs`는
+  `user_id/status/provider/result/error`만 저장하고 제출한 텍스트 자체는 안 남긴다. 그래서
+  검사 시작 시점의 마크다운을 `localStorage`(`proofread:draft-markdown`)에도 남겨서, 알림을 타고
+  돌아왔을 때 결과뿐 아니라 원래 쓰던 텍스트도 같이 보이게 한다. 서버 job과 이 로컬 초안은
+  독립적이라, 다른 기기/브라우저에서 알림을 열면 결과는 보여도 원문은 비어 있을 수 있다.
+- **"승인한 교정 N건 에디터에 적용"** — `editorRef.current.getMarkdown()`으로 현재 마크다운을
+  읽어 승인된 finding마다 `original` → `suggestion` 문자열 치환 후 `setMarkdown()`으로
+  되돌린다(`TextEditorHandle`에 새로 추가한 쓰기 메서드). **알려진 한계**: 같은 `original`
+  문자열이 본문에 여러 번 나오면 전부 치환된다 — 백엔드가 문자 오프셋을 안 주는 건 문서 쪽
+  finding과 동일하다.
+- **"새 문서로 저장"** — `SaveAsDocumentDialog`(`src/components/proofread/
+  SaveAsDocumentDialog.tsx`, `MoveDocumentDialog`와 같은 프로젝트/폴더 선택 패턴)를 연다.
+  제목까지 정하고 저장하면 에디터의 최종 마크다운을 `.md` `File`로 감싸 **기존**
+  `uploadDocument()`(`POST /projects/{id}/documents`, 멀티파트)를 그대로 호출한다 — 저장
+  전용 신규 API는 없다. 성공하면 기존 File→Version→Section→Chunk 파이프라인을 그대로 타는
+  진짜 문서가 생긴다.

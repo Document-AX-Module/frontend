@@ -286,6 +286,8 @@ const NOTIFICATION_STYLES: Record<NotificationType, { label: string; tone: Statu
   "project.member_removed": { label: "멤버", tone: "idle" },
   "analysis.complete": { label: "분석 완료", tone: "done" },
   "analysis.fail": { label: "분석 실패", tone: "fail" },
+  "text_proofread.complete": { label: "맞춤법 검사 완료", tone: "done" },
+  "text_proofread.fail": { label: "맞춤법 검사 실패", tone: "fail" },
 };
 
 export function notificationTypeLabel(type: NotificationType | string): string {

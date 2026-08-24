@@ -10,22 +10,26 @@
 | RAG 검색 `/search` | `src/lib/rag.ts` 준비됨 | 백엔드 `/rag/*` 미구현 → 화면은 목업 |
 | 퀴즈 `/quiz` | 없음 | 엔드포인트/스키마 미확정(§ 아래 백로그) → 예시 문항만 있는 정적 목업 |
 | Embedding Lab `/embedding-lab` | `src/lib/embedding.ts` 준비됨 | 백엔드 `/embedding/*` 미구현 |
-| 맞춤법 검사기(텍스트 직접 입력) `/proofread` | 없음 | 텍스트를 문서 없이 바로 검사하는 API가 백엔드에 없음 → 입력(Toast UI Editor)만 붙어 있고 검사 결과는 정적 예시 |
 | `AiPanel`의 `규정 검증`·`관련 문서` 탭 | `ai.ts`에 함수만 있음 | 백엔드 미구현 |
 
 `ai.ts`의 `classify`/`validate`/`related`는 **호출 코드만 있고 실제로 200을 받은 적이 없다** —
 붙일 때 응답 스키마를 백엔드와 다시 맞춘다.
 
-여기 있었던 두 항목은 배선이 끝나 빠졌다: **알림 벨 · Web Push**(→
-[features/notifications.md](features/notifications.md))와 **멤버 초대 UX 3종**(사용자 검색 ·
-초대 대기 상태 · 초대 알림 → [features/projects-documents.md](features/projects-documents.md)).
+여기 있었던 세 항목은 배선이 끝나 빠졌다: **알림 벨 · Web Push**(→
+[features/notifications.md](features/notifications.md)), **멤버 초대 UX 3종**(사용자 검색 ·
+초대 대기 상태 · 초대 알림 → [features/projects-documents.md](features/projects-documents.md)),
+**맞춤법 검사기(텍스트 직접 입력) `/proofread`**(문서 미등록 텍스트를 202+폴링으로 검사 + 승인/
+반려 + 새 문서로 저장 + `listTextProofreadJobs()`로 마운트 시 이어받기 + 완료 시 알림/웹푸시 →
+[features/proofread.md](features/proofread.md)).
 
 ## AI 기능 모듈
 
 각각 Document Core가 먹여주는 별개의 프론트 표면이다.
 
-1. **오타/맞춤법 검증 (Proofread)** — ✅ 배선 완료. 비동기 202 + 폴링, finding 승인/반려, 수정본
-   적용까지. category = spelling/spacing/grammar/expression → [proofread.md](features/proofread.md)
+1. **오타/맞춤법 검증 (Proofread)** — ✅ 배선 완료. 문서 상세는 비동기 202 + 폴링, finding
+   승인/반려, 수정본 적용까지. `/proofread` 페이지는 문서 미등록 텍스트를 같은 202+폴링 방식으로
+   검사하고(완료/실패는 알림·웹푸시로 통지) 승인된 교정만 에디터에 반영한 뒤 새 문서로 저장한다.
+   category = spelling/spacing/grammar/expression → [proofread.md](features/proofread.md)
 2. **RAG Chat** — 질문 → 임베딩 → pgvector + full-text 하이브리드 검색 → GPT → 답변 + 인용. ⏳
 3. **문서 자동 분류 (Classification)** — type/category/tags. ⏳
 4. **관련 문서 추천 (Related)** — 임베딩 벡터 검색. ⏳

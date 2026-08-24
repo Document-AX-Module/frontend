@@ -186,6 +186,31 @@ export type ProofreadFinding = {
   status: FindingStatus;
 };
 
+/**
+ * 문서 등록 없이 원문 텍스트만 검사하는 `/text/proofread` 응답
+ */
+export type TextProofreadFinding = {
+  id: string;
+  original: string;
+  suggestion: string;
+  reason: string;
+  category: string;
+};
+
+export type TextProofreadJob = {
+  id: number;
+  status: "RUNNING" | "COMPLETED" | "FAILED";
+  findings: TextProofreadFinding[];
+  error: string | null;
+};
+
+/** `GET /text/proofread` 목록 항목 */
+export type TextProofreadJobSummary = {
+  id: number;
+  status: "RUNNING" | "COMPLETED" | "FAILED";
+  created_at: string;
+};
+
 /** POST .../apply 응답 — 승인된 finding을 원본 파일에 반영해 만든 새 버전 정보. */
 export type ApplyAnalysisResult = {
   analysis_id: number;
@@ -314,7 +339,9 @@ export type NotificationType =
   | "project.invite_declined"
   | "project.member_removed"
   | "analysis.complete"
-  | "analysis.fail";
+  | "analysis.fail"
+  | "text_proofread.complete"
+  | "text_proofread.fail";
 
 export type NotificationItem = {
   id: number;

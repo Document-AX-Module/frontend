@@ -106,6 +106,9 @@
 | PATCH | `/documents/{id}/analyses/{analysis_id}/findings/{finding_id}` (`{status}`) → 분석 전체 | ✅ 승인/반려/보류 |
 | POST | `/documents/{id}/analyses/{analysis_id}/apply` → `ApplyAnalysisResult` | ✅ 분석 1건당 1회 (재호출 **409**) |
 | POST | `/documents/{id}/classify` · `/validate` · `/related` | ⏳ |
+| POST | `/text/proofread` → 202 + `TextProofreadJob`(`RUNNING`) | ✅ `/proofread` 페이지 — 문서 미등록 텍스트 검사, `text_proofread_jobs` 테이블에 영속화 |
+| GET | `/text/proofread` → `TextProofreadJobSummary[]`(`id, status, created_at`) | ✅ 내 최근 job 목록 — `listAnalyses`와 같은 역할, 마운트 시 이어받기용 |
+| GET | `/text/proofread/{job_id}` → `TextProofreadJob` | ✅ 폴링 대상. 남의 job이면 404 |
 
 - proofread finding = `{id, original, suggestion, reason, category(spelling/spacing/grammar/expression), status(pending/accepted/rejected), section_id?, page_start/end?}`.
   `id`는 한 분석 안에서만 고정된 위치 기반 값(`f0`, `f1`…). finding 클릭 → 뷰어 `#sec-{section_id}` 스크롤+하이라이트.
@@ -114,6 +117,16 @@
   적용 여부의 진짜 출처는 분석의 `applied_version_id`/`applied_at`이다.
 - PDF는 완전 편집이 아니라 **시각적 패치**로 적용되므로 폰트가 미세하게 달라질 수 있다(UI에 안내).
 - provider = `mock`(규칙기반) | `openai`(GPT). 백엔드에 `OPENAI_API_KEY` 넣으면 GPT로 전환.
+- `/text/proofread` finding = `{id, original, suggestion, reason, category}` — `section_id`/
+  `page_start/end`/`status`가 없다(문서·분석에 안 묶임). 승인/반려 상태는 서버에 저장되지 않고
+  프론트가 로컬로만 들고 있다가, 승인된 것만 문자열 치환으로 에디터에 반영한다.
+- `TextProofreadJob.id`는 **number**(DB PK) — 다른 analysis 엔드포인트의 `id`와 같은 패턴.
+  `text_proofread_jobs` 테이블은 `user_id/status/provider/result(JSONB)/error`만 저장한다 —
+  **원본 입력 텍스트는 서버에 없다**. 그래서 프론트는 검사 시작 시점의 마크다운을
+  `localStorage`(`proofread:draft-markdown`)에도 남겨서, 알림을 타고 돌아왔을 때 결과뿐 아니라
+  원래 쓰던 텍스트도 같이 복원한다.
+- 완료/실패 시 `notify()`가 인앱 알림 + 웹푸시를 함께 보낸다. 타입은 `text_proofread.complete`/
+  `text_proofread.fail`, `url`은 고정으로 `/proofread`, `meta.job_id`로 어떤 job인지 식별한다.
 
 동작 상세는 [features/proofread.md](features/proofread.md).
 
@@ -186,9 +199,10 @@
   `read_at`이 null이면 안 읽음.
 - 응답의 `unread`는 `only_unread`/`limit`과 **무관한 전체 미읽음 수**라 `items.length`와 다를 수
   있고, 벨 뱃지에 그대로 쓴다.
-- `type`은 백엔드에서 자유 문자열이지만 값 집합이 계약이다(6종):
+- `type`은 백엔드에서 자유 문자열이지만 값 집합이 계약이다(8종):
   `project.invite` · `project.invite_accepted` · `project.invite_declined` ·
-  `project.member_removed` · `analysis.complete` · `analysis.fail`. 활동 피드의 `kind`처럼
+  `project.member_removed` · `analysis.complete` · `analysis.fail` ·
+  `text_proofread.complete` · `text_proofread.fail`. 활동 피드의 `kind`처럼
   **프론트가 열거**하며, 라벨/톤은 `notificationTypeLabel()`/`NotificationTypeBadge`가 유일한 출처다.
 - **SSE/WebSocket이 없다** → 벨은 폴링이다: 60초 주기 + `window` focus + 서비스워커 postMessage.
   푸시를 거부한 사용자도 벨로는 알림을 받는다.
