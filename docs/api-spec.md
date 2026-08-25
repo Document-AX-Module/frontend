@@ -301,10 +301,35 @@ AI 문제 생성은 **검색이 아니라 커버리지 방식**이다 — 질의
 
 - 상세는 [features/quiz.md](features/quiz.md).
 
-## 11. 아직 라우터 없음 (⏳)
+## 11. RAG — `src/lib/rag.ts`, `/search`
 
-- RAG `/rag/*` — `rag.ts` 준비됨, 화면은 목업
-- 전역 검색 `/search?q=` — 사이드바 RAG 검색 화면이 목업 (Topbar 검색은 `/documents/search`로 배선됨)
+| Method | Endpoint | 배선 |
+|---|---|---|
+| POST | `/rag/search` — GPT 없이 유사 청크만 반환 | 🔶 클라이언트만 (`search()`), 화면 미사용 |
+| POST | `/rag/query` — 검색 + GPT 답변 (동기) | 🔶 클라이언트만 (`query()`), 화면은 스트리밍 사용 |
+| POST | `/rag/query/stream` — 검색 + GPT 답변 (SSE) | ✅ `RagSearchView` 채팅 입력 |
+| GET | `/rag/history?limit=` | 🔶 클라이언트만 (`history()`), 화면은 대화 목록 사용 |
+| GET | `/rag/conversations?limit=` | ✅ 좌측 "대화" 목록 |
+| GET | `/rag/conversations/{id}` | ✅ 대화 클릭 시 재진입 |
+
+- 전부 **snake_case**. `RagScope` = `{project_ids?, folder_ids?}` — 둘 다 생략/빈 배열이면 "내가
+  접근 가능한 프로젝트 전체". `RagSearchView`는 좌측 체크박스에서 `listProjects()` 결과를 그대로
+  스코프 후보로 쓰고, "전체 프로젝트" 체크 시 빈 스코프(`scope` 자체를 생략)로 보낸다.
+- `RagCitation.score`는 **하이브리드 RRF 융합 점수라 절대값이 아니다** — 같은 응답 안에서의 상대
+  순위로만 의미가 있으므로 UI에 퍼센트로 노출하지 않는다(과거 목업의 "94%" 같은 표시는 제거).
+  대신 인용 순서(`index`, 답변 본문의 `[1]` 표기와 대응)만 배지로 보여준다.
+- 스트리밍은 `event: meta → delta* → citations → done`(또는 `error`) 순서로 온다. `rag.ts`의
+  `queryStream()`이 `fetch` + `ReadableStream`을 직접 파싱한다 — `api.ts`의 `request()`는 JSON
+  전체 응답을 기다리는 구조라 스트리밍에 못 쓴다. 검색/권한 오류(403/404/503)는 스트림을 열기
+  전에 일반 HTTP 에러로 오고, LLM 자체 실패만 스트림 중 `error` 이벤트로 온다(이 경우 `done` 없음).
+- `meta`의 `conversation_id`는 **새 대화의 첫 메시지에서는 null**일 수 있다 — 실제 id는 `done`
+  이벤트에서 확정되므로, `RagSearchView`는 `done`을 받을 때까지 활성 대화를 미확정 상태로 둔다.
+- `conversation_id`를 보내면 이전 턴을 포함해 이어붙는 멀티턴 대화가 된다. 대화 목록/재진입은
+  `/rag/conversations`, 대시보드 등에서 쓸 "최근 질문" 한 줄 요약은 `/rag/history`로 분리돼 있다.
+- 상세는 [features/rag-search.md](features/rag-search.md).
+
+## 12. 아직 라우터 없음 (⏳)
+
 - `/health` (✅ 존재, 프론트 미사용)
 
 엔드포인트/스키마가 미확정인 백엔드 로드맵 백로그(PPT·즐겨찾기/메모·MCP)는

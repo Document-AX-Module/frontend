@@ -269,19 +269,102 @@ export type ValidationIssue = {
 
 export type RelatedDocument = { documentId: string; name: string; score: number };
 
-/* --- RAG --- */
-export type Citation = {
-  documentId: string;
-  sectionId: string;
-  pageStart?: number;
-  pageEnd?: number;
+/* --- RAG (백엔드 app/schemas/rag.py 반영, snake_case) --- */
+export type RagScope = { project_ids?: number[]; folder_ids?: number[] };
+
+/** `POST /rag/search` 결과 항목 */
+export type RagSearchHit = {
+  index: number;
+  document_id: number;
+  document_name: string;
+  section_id: number;
+  chunk_id: number;
+  page_start: number | null;
+  page_end: number | null;
   score: number;
-  name: string;
+  heading_path: string[];
+  content: string;
+  expanded: boolean;
 };
 
-export type RagAnswer = { answer: string; citations: Citation[] };
+export type RagSearchResponse = {
+  question: string;
+  embedding_model: string;
+  hits: RagSearchHit[];
+};
 
-export type RagScope = { projectIds?: string[]; folderIds?: string[] };
+export type RagCitation = {
+  index: number;
+  document_id: number;
+  document_name: string;
+  section_id: number;
+  chunk_id: number;
+  page_start: number | null;
+  page_end: number | null;
+  score: number;
+  heading_path: string[];
+};
+
+export type RagQueryRequest = {
+  question: string;
+  scope?: RagScope;
+  conversation_id?: number;
+  top_k?: number;
+};
+
+export type RagQueryResponse = {
+  conversation_id: number;
+  message_id: number;
+  question: string;
+  answer: string;
+  citations: RagCitation[];
+  provider: string;
+  embedding_model: string;
+  retrieved_count: number;
+  latency_ms: number;
+};
+
+export type RagStreamMeta = {
+  conversation_id: number;
+  embedding_model: string;
+  retrieved_count: number;
+};
+
+export type RagStreamDone = {
+  conversation_id: number;
+  message_id: number;
+  provider: string;
+  retrieved_count: number;
+  latency_ms: number;
+};
+
+export type RagHistoryItem = {
+  conversation_id: number;
+  message_id: number;
+  question: string;
+  at: string;
+};
+
+export type RagConversationSummary = {
+  id: number;
+  title: string | null;
+  project_id: number | null;
+  created_at: string;
+  updated_at: string;
+};
+
+export type RagMessage = {
+  id: number;
+  role: "user" | "assistant";
+  content: string;
+  citations: RagCitation[] | null;
+  provider: string | null;
+  created_at: string;
+};
+
+export type RagConversationDetail = RagConversationSummary & {
+  messages: RagMessage[];
+};
 
 /* --- Embedding Lab (백엔드 app/schemas/embedding.py 반영, 전부 admin 전용) --- */
 export type EmbeddingModelStatus = "TEST" | "TESTED" | "ACTIVE";

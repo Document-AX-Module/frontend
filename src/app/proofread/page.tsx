@@ -24,6 +24,7 @@ const POLL_INTERVAL_MS = 2000;
 const POLL_MAX_ATTEMPTS = 90;
 
 const DRAFT_KEY = "proofread:draft-markdown";
+const DISMISSED_JOB_KEY = "proofread:dismissed-job-id";
 
 function loadDraft(): string {
   if (typeof window === "undefined") return "";
@@ -43,6 +44,26 @@ function saveDraft(markdown: string) {
   }
 }
 
+function loadDismissedJobId(): number | null {
+  if (typeof window === "undefined") return null;
+  try {
+    const raw = localStorage.getItem(DISMISSED_JOB_KEY);
+    return raw ? Number(raw) : null;
+  } catch {
+    return null;
+  }
+}
+
+function saveDismissedJobId(id: number | null) {
+  if (typeof window === "undefined") return;
+  try {
+    if (id == null) localStorage.removeItem(DISMISSED_JOB_KEY);
+    else localStorage.setItem(DISMISSED_JOB_KEY, String(id));
+  } catch {
+    // no-op
+  }
+}
+
 export default function ProofreadTextPage() {
   const editorRef = useRef<TextEditorHandle>(null);
   const [draftMarkdown] = useState(loadDraft);
@@ -55,6 +76,8 @@ export default function ProofreadTextPage() {
   const [saved, setSaved] = useState<Document | null>(null);
   // 진행 중인 폴링 루프를 취소하기 위한 토큰. AiPanel의 오탈자 검증 폴링과 같은 패턴.
   const pollRef = useRef<{ cancelled: boolean } | null>(null);
+  // 마운트 시 이어받았거나 방금 시작한 job의 id. 초기화 시 이 id를 "무시할 job"으로 기록한다.
+  const currentJobIdRef = useRef<number | null>(null);
 
   const acceptedCount = findings.filter((f) => f.status === "accepted").length;
 
@@ -100,8 +123,10 @@ export default function ProofreadTextPage() {
           (a, b) => +new Date(b.created_at) - +new Date(a.created_at),
         )[0];
         if (!latest || cancelled) return;
+        if (latest.id === loadDismissedJobId()) return;
         const full = await getTextProofreadJob(latest.id);
         if (cancelled) return;
+        currentJobIdRef.current = full.id;
         if (full.status === "RUNNING") {
           setChecking(true);
           const token = { cancelled: false };
@@ -132,6 +157,8 @@ export default function ProofreadTextPage() {
     saveDraft(editorRef.current?.getMarkdown() ?? "");
     try {
       const started = await startTextProofread(markdown);
+      currentJobIdRef.current = started.id;
+      saveDismissedJobId(null);
       const token = { cancelled: false };
       pollRef.current = token;
       await pollJob(started.id, token);
@@ -169,6 +196,10 @@ export default function ProofreadTextPage() {
     stopPolling();
     editorRef.current?.setMarkdown("");
     saveDraft("");
+    if (currentJobIdRef.current != null) {
+      saveDismissedJobId(currentJobIdRef.current);
+      currentJobIdRef.current = null;
+    }
     setChecking(false);
     setChecked(false);
     setFindings([]);

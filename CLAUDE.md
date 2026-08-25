@@ -47,7 +47,8 @@ that cover the code you are about to touch.
 | [docs/features/mypage.md](docs/features/mypage.md) | `/mypage` |
 | [docs/features/embedding-lab.md](docs/features/embedding-lab.md) | `/embedding-lab` (admin-only): model activation/reembed, benchmark datasets/runs/apply, document migration |
 | [docs/features/quiz.md](docs/features/quiz.md) | `/quiz`: question bank, quiz books, the `has_sessions` edit lock, server-session take/grade flow |
-| [docs/roadmap.md](docs/roadmap.md) | anything still mock: RAG search, quiz AI generation, other AI tabs; backend/platform context |
+| [docs/features/rag-search.md](docs/features/rag-search.md) | `/search`: RAG chat, SSE streaming (`rag.ts`'s `queryStream`), project scope picker, conversation list/reopen, citation rendering |
+| [docs/roadmap.md](docs/roadmap.md) | anything still mock: `AiPanel`'s classify/validate/related tabs; backend/platform context |
 
 ## Hard rules
 

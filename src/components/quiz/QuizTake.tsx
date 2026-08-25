@@ -472,6 +472,7 @@ function PlaySession({
                 {mode === "study" && (
                   <Button
                     variant="outline"
+                    className="shrink-0 whitespace-nowrap"
                     onClick={() => void selectAnswer(draft)}
                     disabled={locked || grading || !draft.trim()}
                   >
