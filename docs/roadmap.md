@@ -8,19 +8,21 @@
 | 화면 | 클라이언트 | 상태 |
 |---|---|---|
 | RAG 검색 `/search` | `src/lib/rag.ts` 준비됨 | 백엔드 `/rag/*` 미구현 → 화면은 목업 |
-| 퀴즈 `/quiz` | 없음 | 엔드포인트/스키마 미확정(§ 아래 백로그) → 예시 문항만 있는 정적 목업 |
-| Embedding Lab `/embedding-lab` | `src/lib/embedding.ts` 준비됨 | 백엔드 `/embedding/*` 미구현 |
 | `AiPanel`의 `규정 검증`·`관련 문서` 탭 | `ai.ts`에 함수만 있음 | 백엔드 미구현 |
 
 `ai.ts`의 `classify`/`validate`/`related`는 **호출 코드만 있고 실제로 200을 받은 적이 없다** —
 붙일 때 응답 스키마를 백엔드와 다시 맞춘다.
 
-여기 있었던 세 항목은 배선이 끝나 빠졌다: **알림 벨 · Web Push**(→
+여기 있었던 다섯 항목은 배선이 끝나 빠졌다: **알림 벨 · Web Push**(→
 [features/notifications.md](features/notifications.md)), **멤버 초대 UX 3종**(사용자 검색 ·
 초대 대기 상태 · 초대 알림 → [features/projects-documents.md](features/projects-documents.md)),
 **맞춤법 검사기(텍스트 직접 입력) `/proofread`**(문서 미등록 텍스트를 202+폴링으로 검사 + 승인/
 반려 + 새 문서로 저장 + `listTextProofreadJobs()`로 마운트 시 이어받기 + 완료 시 알림/웹푸시 →
-[features/proofread.md](features/proofread.md)).
+[features/proofread.md](features/proofread.md)), **Embedding Lab `/embedding-lab`**(모델
+활성화·재임베딩, 벤치마크 데이터셋/실행/운영 적용, 기존 문서 마이그레이션 — admin 전용 →
+[features/embedding-lab.md](features/embedding-lab.md)), **퀴즈 AI 자동 생성**(RAG Retrieval을
+재사용하지 않고 문서 청크를 순서대로 훑는 커버리지 방식으로 구현, 202+폴링 →
+[features/quiz.md](features/quiz.md)).
 
 ## AI 기능 모듈
 
@@ -42,7 +44,6 @@
 백엔드 `api-spec.md` §6-1·§8~§11에 **방향성만** 기록된 항목들. 엔드포인트/스키마가 미확정이라
 `src/lib/*.ts`에 아직 아무것도 없다. **착수 전 백엔드 스키마 확정 여부부터 확인할 것.**
 
-- **퀴즈** `/quizzes/*` — RAG Retrieval Engine을 재사용하므로 RAG가 먼저 구현돼야 착수 가능.
 - **PPT 지원** — 새 엔드포인트 없음. 기존 문서/AI 엔드포인트가 PPTX에서도 동작하게 만드는 백엔드
   내부 작업이라, 프론트 변경은 상태 폴링이 `FAILED`가 아니라 정상 파이프라인을 타는 정도.
 - **즐겨찾기/메모/Notion 연동** `/documents/{id}/favorite`, `/favorites`,

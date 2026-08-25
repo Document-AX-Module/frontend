@@ -33,9 +33,10 @@
 - `url`은 프론트 경로 그대로 쓴다. **초대 알림만 예외**: `project.invite`의 `url`은
   `/projects/{id}`인데 수락 전에는 403이라 `/projects`(초대 카드가 있는 곳)로 돌린다 →
   `targetHref()`.
-- 알림 종류 6종의 한글 라벨/톤은 `notificationTypeLabel()`/`NotificationTypeBadge`
+- 알림 종류 10종의 한글 라벨은 `notificationTypeLabel()`/`NotificationTypeBadge`
   (`primitives.tsx`)가 유일한 출처다. 모르는 `type`이 와도 원문을 그대로 배지에 그린다 —
-  활동 피드의 `kind`와 같은 정책([activity-feed.md](activity-feed.md)).
+  활동 피드의 `kind`와 같은 정책([activity-feed.md](activity-feed.md)). 뱃지는 타입별 톤 구분
+  없이 무채색 하나로 통일한다(색으로 구분할 만큼 정보 가치가 없어서).
 - 전용 알림 페이지는 없다. 드롭다운이 최근 20건만 보여주고 `offset` 페이지네이션은 아직 안 쓴다.
 
 ## Web Push
@@ -106,3 +107,5 @@
 | `project.invite_declined` | 초대 거절 | 초대한 owner |
 | `project.member_removed` | **정식 멤버**를 제거 (초대 취소는 알리지 않는다) | 제거된 사람 |
 | `analysis.complete` / `analysis.fail` | AI 분석 종료 | 실행한 사람 |
+| `text_proofread.complete` / `text_proofread.fail` | 맞춤법 검사 종료 | 실행한 사람 |
+| `quiz_generate.complete` / `quiz_generate.fail` | AI 문제 생성 종료 | 실행한 사람 |

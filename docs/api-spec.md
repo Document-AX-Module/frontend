@@ -199,11 +199,13 @@
   `read_at`이 null이면 안 읽음.
 - 응답의 `unread`는 `only_unread`/`limit`과 **무관한 전체 미읽음 수**라 `items.length`와 다를 수
   있고, 벨 뱃지에 그대로 쓴다.
-- `type`은 백엔드에서 자유 문자열이지만 값 집합이 계약이다(8종):
+- `type`은 백엔드에서 자유 문자열이지만 값 집합이 계약이다(10종):
   `project.invite` · `project.invite_accepted` · `project.invite_declined` ·
   `project.member_removed` · `analysis.complete` · `analysis.fail` ·
-  `text_proofread.complete` · `text_proofread.fail`. 활동 피드의 `kind`처럼
-  **프론트가 열거**하며, 라벨/톤은 `notificationTypeLabel()`/`NotificationTypeBadge`가 유일한 출처다.
+  `text_proofread.complete` · `text_proofread.fail` · `quiz_generate.complete` ·
+  `quiz_generate.fail`. 활동 피드의 `kind`처럼
+  **프론트가 열거**하며, 라벨은 `notificationTypeLabel()`/`NotificationTypeBadge`가 유일한 출처다.
+  뱃지는 타입 간 톤 구분 없이 무채색 하나로 통일한다.
 - **SSE/WebSocket이 없다** → 벨은 폴링이다: 60초 주기 + `window` focus + 서비스워커 postMessage.
   푸시를 거부한 사용자도 벨로는 알림을 받는다.
 - `url`은 **프론트 경로 그대로** 쓸 수 있다(`/projects/{id}`, `/documents/{id}` 모두 기존 라우트와
@@ -227,12 +229,83 @@
 
 동작·제약(Turbopack, secure context)은 [features/notifications.md](features/notifications.md).
 
-## 9. 아직 라우터 없음 (⏳)
+## 9. Embedding Lab — `src/lib/embedding.ts`, `/embedding-lab` (전부 admin 전용, 403 게이팅)
+
+| Method | Endpoint | 배선 |
+|---|---|---|
+| GET | `/embedding/models` → `EmbeddingModelRead[]` | ✅ `ModelsPanel` 목록 |
+| POST | `/embedding/models/{id}/activate` | ✅ `ModelsPanel` 활성화 (청킹 설정은 불변) |
+| POST | `/embedding/models/{id}/reembed` → `EmbeddingJobRead` (202) | ✅ `ModelsPanel` + `JobProgress` 폴링 |
+| GET/POST | `/embedding/datasets` | ✅ `BenchmarkPanel` 목록 · `DatasetModal` 생성(질문 + ground truth) |
+| GET | `/embedding/benchmarks` → `BenchmarkRunRead[]` (결과 포함) | ✅ `BenchmarkPanel` 실행 이력 |
+| POST | `/embedding/benchmarks/run` → `{run_id}` (202, `chunking_config` override 가능) | ✅ `BenchmarkPanel` 실행 |
+| GET | `/embedding/benchmarks/{run_id}` | ✅ 진행 중인 run 폴링 |
+| POST | `/embedding/benchmarks/{run_id}/apply` (`{model_id}`) | ✅ `BenchmarkPanel` "운영 적용" — 기존 문서 재처리는 트리거하지 않음 |
+| POST | `/embedding/migrate` → `EmbeddingJobRead` (202) | ✅ `MigrationPanel` — 문서 체크박스로 골라 재청킹+재임베딩 |
+| GET | `/embedding/jobs/{job_id}` | ✅ `JobProgress` — reembed/migrate 공용 폴링 |
+
+- 사이드바 "관리자" 섹션과 `/embedding-lab` 페이지는 `useAuth().user.role === "admin"`이 아니면 숨김/차단.
+- job/run/result의 status 어휘는 `RUNNING` / `COMPLETED` / `FAILED`로 공통 — `EmbeddingJobStatusBadge` 하나로 셋 다 표시.
+- 상세는 [features/embedding-lab.md](features/embedding-lab.md).
+
+## 10. 퀴즈 (`quiz.ts`)
+
+백엔드 `app/api/v1/quiz.py` · `app/schemas/quiz.py`. 19개 전부 배선 완료.
+문제은행/문제집/내 응시 이력은 **프로젝트 스코프**여서, `/quiz/*` 라우트는
+`QuizProjectProvider`가 들고 있는 "지금 보고 있는 프로젝트"를 붙여 호출한다.
+
+| Method | Path | 상태 |
+|---|---|---|
+| GET | `/projects/{project_id}/quiz-questions` (`?document_id=&difficulty=&type=&review_status=&q=`) | ✅ `QuestionBankView` — 필터는 전부 서버 쿼리 파라미터 |
+| POST | `/projects/{project_id}/quiz-questions` (201) | ✅ `QuestionFormModal` — 서버가 `generation_type=MANUAL`/`review_status=DRAFT` 고정 |
+| PATCH | `/quiz-questions/{question_id}` | ✅ 부분 수정. **문제집 잠금과 무관** (409 없음) |
+| DELETE | `/quiz-questions/{question_id}` (204) | ✅ 문제은행에서 완전 삭제 — 담고 있던 문제집에서도 빠지지만 과거 응시 결과는 스냅샷이라 유지 |
+| GET | `/projects/{project_id}/quizzes` | ✅ `QuizBooksView` — **문항 수는 응답에 없어** 문제집별로 `/questions`를 따로 센다 |
+| POST | `/projects/{project_id}/quizzes` (201) | ✅ 문제집 생성 모달 |
+| GET | `/quizzes/{quiz_book_id}` | ✅ `QuizBookDetail` |
+| PATCH | `/quizzes/{quiz_book_id}` | ✅ 설정 탭 — 🔒 409 |
+| DELETE | `/quizzes/{quiz_book_id}` (204) | ✅ 잠금과 무관하게 항상 허용, 세션/답변 cascade 삭제 |
+| POST | `/quizzes/{quiz_book_id}/duplicate` (201) | ✅ 잠긴 문제집 편집 경로 — 복제 후 새 문제집으로 이동 |
+| GET | `/quizzes/{quiz_book_id}/questions` | ✅ 순서대로, 정답 포함 (편집 화면용) |
+| POST | `/quizzes/{quiz_book_id}/questions` (`{question_ids}`) | ✅ 문제은행에서 편입 — 🔒 409 |
+| DELETE | `/quizzes/{quiz_book_id}/questions/{question_id}` (204) | ✅ 연결만 해제 — 🔒 409 |
+| POST | `/quizzes/{quiz_book_id}/sessions` (`{mode}`, 201) | ✅ 정답 빠진 문항 + `session_id`. 모드는 시작 시 서버에 고정 |
+| POST | `.../sessions/{session_id}/answers` | ✅ study 모드 즉시채점 (문항 1개씩) |
+| POST | `.../sessions/{session_id}/submit` | ✅ 최종 제출 → 점수 집계 + 오답노트 |
+| GET | `/quizzes/{quiz_book_id}/sessions` | ✅ 문제집 결과 탭 — **전체 사용자** 세션 요약 |
+| GET | `.../sessions/{session_id}` | ✅ 세션 상세(오답노트) — **본인 세션만** |
+| GET | `/projects/{project_id}/quiz-sessions` | ✅ 결과·오답 화면 — 프로젝트 통틀어 **내** 이력 |
+| POST | `/projects/{project_id}/quiz-questions/generate` → `QuizGenerationJobRead` (202) | ✅ `GenerateQuestionsModal` — AI 문제 생성 시작 |
+| GET | `/quiz-generation-jobs/{job_id}` | ✅ `GenerateQuestionsModal` 폴링 |
+
+AI 문제 생성은 **검색이 아니라 커버리지 방식**이다 — 질의(topic)를 받지 않고, 지정한 문서의
+청크를 등장 순서대로 전부 훑어 배치로 나눠 출제한다. 그래서 임베딩이 없는 문서(`CHUNKED`
+상태)에서도 동작한다. 생성된 문항은 `generation_type=AI`/`review_status=DRAFT`로 문제은행에
+들어가고, `quiz_book_id`를 지정하면 그 문제집에도 자동 편입된다. `GenerateQuestionsModal`은
+문제은행(`QuestionBankView`)과 문제집 상세(`QuizBookDetail`) 양쪽에서 열리며, 후자는 프로젝트·
+편입 문제집이 그 문제집으로 고정된다. 202로 `status=RUNNING`인 작업을 받고 2초 간격으로
+`/quiz-generation-jobs/{job_id}`를 폴링한다 — `created_count`는 배치마다 올라가 진행률로 쓴다.
+`COMPLETED`인데 `error`가 있으면 "부분 성공"(중복 제외/일부 배치 실패로 요청보다 적게 생성됨)
+안내다. 409는 두 가지 다른 의미(대상 문서에 청크 없음 / 편입 문제집 응시 이력 있음)를 가져
+`isQuizLockedError`로 뭉뚱그리지 않고 서버 메시지를 그대로 보여준다.
+
+프론트가 반드시 지켜야 하는 세 가지:
+
+1. **`has_sessions`로 버튼을 미리 잠근다.** 서버(409)가 최종 방어선이지만 클릭 후 에러는 UX가
+   나쁘다. 조회 시점과 수정 시점 사이에 상태가 바뀔 수 있으니 409도 항상 처리한다 —
+   `isQuizLockedError` / `QUIZ_LOCKED_MESSAGE`.
+2. **`shuffle_options`는 백엔드가 섞지 않는다.** 정답이 `options` 인덱스라서다. 프론트가 표시
+   순서만 섞고 제출은 항상 서버가 준 배열의 **원본 인덱스**로 한다 (`QuizTake`의 `displayOrder`).
+3. **제출 시 모든 문항을 보낸다.** 서버는 실제로 기록된 답변 수로 `total_count`를 계산하므로,
+   답하지 않은 문항을 빼고 보내면 분모에서 빠져 점수가 부풀려진다 — 무응답도 `""`로 보낸다.
+
+- 상세는 [features/quiz.md](features/quiz.md).
+
+## 11. 아직 라우터 없음 (⏳)
 
 - RAG `/rag/*` — `rag.ts` 준비됨, 화면은 목업
-- Embedding Lab `/embedding/*` — `embedding.ts` 준비됨, 화면은 목업
 - 전역 검색 `/search?q=` — 사이드바 RAG 검색 화면이 목업 (Topbar 검색은 `/documents/search`로 배선됨)
 - `/health` (✅ 존재, 프론트 미사용)
 
-엔드포인트/스키마가 미확정인 백엔드 로드맵 백로그(퀴즈·PPT·알림·즐겨찾기/메모·MCP)는
+엔드포인트/스키마가 미확정인 백엔드 로드맵 백로그(PPT·즐겨찾기/메모·MCP)는
 [roadmap.md](roadmap.md)로 옮겼다.

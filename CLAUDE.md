@@ -45,7 +45,9 @@ that cover the code you are about to touch.
 | [docs/features/activity-feed.md](docs/features/activity-feed.md) | the shared `ActivityFeed` (kind set, badge tones, document links) |
 | [docs/features/notifications.md](docs/features/notifications.md) | the Topbar bell (polling), Web Push (`sw.js`, VAPID, secure context), PWA manifest |
 | [docs/features/mypage.md](docs/features/mypage.md) | `/mypage` |
-| [docs/roadmap.md](docs/roadmap.md) | anything still mock: RAG search, Embedding Lab, other AI tabs; backend/platform context |
+| [docs/features/embedding-lab.md](docs/features/embedding-lab.md) | `/embedding-lab` (admin-only): model activation/reembed, benchmark datasets/runs/apply, document migration |
+| [docs/features/quiz.md](docs/features/quiz.md) | `/quiz`: question bank, quiz books, the `has_sessions` edit lock, server-session take/grade flow |
+| [docs/roadmap.md](docs/roadmap.md) | anything still mock: RAG search, quiz AI generation, other AI tabs; backend/platform context |
 
 ## Hard rules
 
