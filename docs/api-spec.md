@@ -79,6 +79,7 @@
 | GET/DELETE | `/documents/{id}` | ✅ 상세/삭제 |
 | GET | `/documents/{id}/download` | ✅ (Bearer로 blob 저장 · 원본 미리보기도 같은 blob) |
 | GET | `/documents/{id}/versions` | ✅ |
+| POST | `/documents/{id}/versions` (multipart: file) → **202** | ✅ `createVersion()` — 맞춤법 검사기 "새 문서로 저장"이 원본(V1) 위에 수정본을 V2로 인서트할 때만 쓴다 |
 | GET | `/versions/{id}` · `/versions/{id}/status` | ✅ 폴링 |
 | GET | `/versions/{id}/sections` | ✅ 개요/뷰어 |
 | GET | `/versions/{id}/chunks` | 🔶 |
@@ -315,9 +316,15 @@ AI 문제 생성은 **검색이 아니라 커버리지 방식**이다 — 질의
 - 전부 **snake_case**. `RagScope` = `{project_ids?, folder_ids?}` — 둘 다 생략/빈 배열이면 "내가
   접근 가능한 프로젝트 전체". `RagSearchView`는 좌측 체크박스에서 `listProjects()` 결과를 그대로
   스코프 후보로 쓰고, "전체 프로젝트" 체크 시 빈 스코프(`scope` 자체를 생략)로 보낸다.
-- `RagCitation.score`는 **하이브리드 RRF 융합 점수라 절대값이 아니다** — 같은 응답 안에서의 상대
-  순위로만 의미가 있으므로 UI에 퍼센트로 노출하지 않는다(과거 목업의 "94%" 같은 표시는 제거).
-  대신 인용 순서(`index`, 답변 본문의 `[1]` 표기와 대응)만 배지로 보여준다.
+- `RagCitation.score`는 **하이브리드 RRF 융합 점수라 절대값이 아니다** — 벡터/FTS 각 결과 목록의
+  순위만으로 `1/(k+rank)`(k=60)를 합산해 만든 값이라 최댓값도 0.03대에 불과하다. 그대로 %로
+  보여주면 최상위 출처도 "3%"처럼 보여 오해를 주므로, UI는 절대 퍼센트 대신 **같은 응답 안
+  citations 중 최고점 대비 상대 비율**을 막대로만 보여준다(응답 간 비교는 불가). 인용 순서
+  (`index`, 답변 본문의 `[1]` 표기와 대응)는 별도 배지로 보여준다.
+- `RagQueryResponse.confidence` / `RagStreamDone.confidence` / `RagMessageRead.confidence`는 위
+  `score`와 별개로, GPT가 답변에 스스로 매긴 0~1 자기신고 값이다(provider가 값을 안 주면
+  `null`). `RagSearchView`는 이걸 `ConfidenceBadge`로 "출처" 섹션 옆에 퍼센트 + 3단계 라벨로
+  보여준다 — 검색 유사도(`score`)와 혼동하지 않게 별도 필드/배지로 유지한다.
 - 스트리밍은 `event: meta → delta* → citations → done`(또는 `error`) 순서로 온다. `rag.ts`의
   `queryStream()`이 `fetch` + `ReadableStream`을 직접 파싱한다 — `api.ts`의 `request()`는 JSON
   전체 응답을 기다리는 구조라 스트리밍에 못 쓴다. 검색/권한 오류(403/404/503)는 스트림을 열기

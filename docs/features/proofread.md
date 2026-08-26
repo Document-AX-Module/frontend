@@ -91,6 +91,11 @@ finding = `{ id, original, suggestion, reason, category, status, section_id?, pa
   건드리려다 `removeChild` 에러로 이어진다). 마운트 시 `listTextProofreadJobs()`로 내 최근 job을
   조회해(`listAnalyses`와 같은 역할) `RUNNING`이면 폴링을 재개하고, `COMPLETED`/`FAILED`면 결과를
   그대로 복원한다 — 검사 중 다른 페이지로 이동해도 서버 쪽 진행 상황은 안 사라진다.
+  "초기화"는 이 job id를 `localStorage`(`proofread:dismissed-job-id`)에 남겨 다음 마운트가
+  다시 복원하지 못하게 막는다. **race condition**: 이 "이어받기" 요청이 아직 응답 전인 상태에서
+  초기화를 누르면(느린 네트워크, 또는 페이지 진입 직후 바로 초기화) `currentJobIdRef`가 아직
+  안 채워져 있어 dismiss를 못 남긴다 — `restoreSuppressedRef`가 이 시점을 표시해 두고,
+  뒤늦게 도착한 응답이 그걸 보면 상태를 복원하는 대신 그제야 dismiss만 기록하고 끝낸다.
 - **완료/실패 시 알림 + 웹푸시.** 타입 `text_proofread.complete`/`text_proofread.fail`,
   `url`은 고정 `/proofread`. 알림 벨/푸시 인프라를 그대로 탄다([notifications.md](notifications.md)).
 - **알려진 한계 — 원본 입력 텍스트는 서버에 없다.** `text_proofread_jobs`는
@@ -105,7 +110,18 @@ finding = `{ id, original, suggestion, reason, category, status, section_id?, pa
   finding과 동일하다.
 - **"새 문서로 저장"** — `SaveAsDocumentDialog`(`src/components/proofread/
   SaveAsDocumentDialog.tsx`, `MoveDocumentDialog`와 같은 프로젝트/폴더 선택 패턴)를 연다.
-  제목까지 정하고 저장하면 에디터의 최종 마크다운을 `.md` `File`로 감싸 **기존**
-  `uploadDocument()`(`POST /projects/{id}/documents`, 멀티파트)를 그대로 호출한다 — 저장
-  전용 신규 API는 없다. 성공하면 기존 File→Version→Section→Chunk 파이프라인을 그대로 타는
-  진짜 문서가 생긴다.
+  `page.tsx`가 검사를 걸었던 시점의 마크다운을 `originalMarkdownRef`에 잡아두고 있다가
+  `originalMarkdown` prop으로 넘긴다 — 다이얼로그는 그걸 현재 에디터 마크다운(`markdown` prop,
+  교정 반영 후일 수도 있는 최종본)과 비교해 **다르면** V1(원본) → V2(수정본) 순으로 버전을
+  인서트하고, **같으면**(교정을 하나도 승인/적용하지 않고 그대로 저장) 기존처럼 단일
+  업로드만 한다.
+  - V1: 원본을 `.md` `File`로 감싸 **기존** `uploadDocument()`(`POST /projects/{id}/documents`,
+    멀티파트)로 새 문서를 만든다.
+    V2: 그 문서 id로 `createVersion()`(`POST /documents/{id}/versions`, `src/lib/versions.ts`)을
+    호출해 수정본을 새 버전으로 추가한다 — 두 엔드포인트 모두 File→Version→Section→Chunk
+    파이프라인을 그대로 태우므로(각자 백그라운드 파싱 202) V1/V2 둘 다 진짜 문서 버전이고,
+    [문서 비교 탭](document-diff.md)으로 교정 전후를 그대로 비교할 수 있다.
+  - **V2 생성이 실패하면** 다이얼로그를 닫지 않고 에러만 띄운다 — V1(원본)은 이미 저장된
+    상태이므로, 사용자가 재시도 대신 그냥 취소하면 그 문서에는 원본 버전만 남는다.
+  - `document.version_add` 활동 로그가 V2 생성 시 남는다([activity-feed.md](activity-feed.md)의
+    `버전` kind).

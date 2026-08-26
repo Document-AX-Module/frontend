@@ -12,11 +12,14 @@
 백엔드 `activity_logs` 테이블(마이그레이션 `1e199411435d`)에는 표시 문구가 아니라 **액션
 코드**(`document.upload`, `analysis.start` …)가 들어가고, 문구와 배지 `kind`는 읽을 때
 `activity_service.describe()`가 만든다. 그래서 `kind`는 열거형이다 —
-`ACTION_LABELS` + `ANALYSIS_LABELS` + 폴백 2개 = **12개**:
+`ACTION_LABELS` + `ANALYSIS_LABELS` + 폴백 2개 = **13개**:
 
 ```
-로그인 · 프로젝트 · 폴더 · 문서 · 삭제 · 업로드 · 오타 · 분류 · 규정 · 추천 · 분석 · 기타
+로그인 · 프로젝트 · 폴더 · 문서 · 삭제 · 업로드 · 버전 · 오타 · 분류 · 규정 · 추천 · 분석 · 기타
 ```
+
+`버전` = `document.version_add`(맞춤법 검사기의 "새 문서로 저장"이 원본→수정본을 V1→V2로
+인서트할 때, 수정본 쪽 버전 추가에서 남는다) — [proofread.md](proofread.md) 참고.
 
 `문서`는 `document.move`/`document.folder_change`(프로젝트 권한 기능의 문서 이동)가 쓴다 —
 `project.visibility_change`/`project.member_invite`/`project.member_remove`는 새 액션이지만
@@ -37,7 +40,7 @@
 |---|---|---|
 | `destructive` | 브랜드 레드 `#b01c2e` | `삭제` |
 | `analysis` | violet `#6d28d9` | `오타` `규정` `분류` `추천` `분석` |
-| `change` | sky `#0369a1` | `업로드` `프로젝트` `폴더` `문서` |
+| `change` | sky `#0369a1` | `업로드` `버전` `프로젝트` `폴더` `문서` |
 | `quiet` | 중립 | `로그인` `기타` |
 
 피드는 kind가 임의 순서로 섞이므로 인접쌍이 아니라 **전체 쌍**으로 검증했다(위 3색 전 항목
