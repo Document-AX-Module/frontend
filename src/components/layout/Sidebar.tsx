@@ -76,6 +76,12 @@ const adminNav: NavItem[] = [
     icon: <IconBeaker />,
     match: (p) => p.startsWith("/embedding-lab"),
   },
+  {
+    href: "/ai-ops",
+    label: "AI 운영",
+    icon: <IconChart />,
+    match: (p) => p.startsWith("/ai-ops"),
+  },
 ];
 
 export function Sidebar({ open, onClose }: { open: boolean; onClose: () => void }) {
@@ -257,6 +263,13 @@ function IconQuiz() {
       <path d="M9.5 9a2.5 2.5 0 1 1 3.5 2.3c-.8.4-1.3 1.1-1.3 1.9V14" />
       <circle cx="12" cy="17.5" r="0.9" fill="currentColor" stroke="none" />
       <circle cx="12" cy="12" r="9" />
+    </svg>
+  );
+}
+function IconChart() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
+      <path d="M4 20V10M12 20V4M20 20v-7" strokeLinecap="round" />
     </svg>
   );
 }

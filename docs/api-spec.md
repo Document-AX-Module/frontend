@@ -352,6 +352,53 @@ AI 문제 생성은 **검색이 아니라 커버리지 방식**이다 — 질의
   `/rag/conversations`, 대시보드 등에서 쓸 "최근 질문" 한 줄 요약은 `/rag/history`로 분리돼 있다.
 - 상세는 [features/rag-search.md](features/rag-search.md).
 
+## 13. 관리자 AI 운영 대시보드 — `src/lib/admin.ts`, `/ai-ops` (전부 admin 전용, 403 게이팅)
+
+| Method | Endpoint | 배선 |
+|---|---|---|
+| GET | `/admin/usage/summary?period=day\|month\|year`(기본 month) | ✅ `UsagePanel` — 토큰/추정비용 집계(`total`/`by_day`/`by_feature`/`status_counts`) |
+| GET | `/admin/usage/logs?feature=&status=&page=&size=` | ✅ `UsageLogsPanel` — LLM 호출 성공/실패 원본 로그, 페이지네이션 |
+| GET | `/admin/billing/summary` | ✅ `UsagePanel` — `actual_available`로 실제 청구액 유무가 갈린다(아래 참고) |
+| GET | `/admin/search/keywords?period=&top=` | ✅ `KeywordsPanel` — RAG 챗봇 질문 형태소 분석 기반 키워드 순위, 막대그래프 |
+| GET | `/admin/rag/logs?user_id=&page=&size=` | ✅ `RagLogsPanel` — 전체 사용자 대상 검색-답변 로그, 클릭해서 펼치기 |
+
+- 사이드바 "관리자" 섹션과 `/ai-ops` 페이지는 Embedding Lab과 같은 패턴으로
+  `useAuth().user.role !== "admin"`이면 숨김/차단.
+- `UsageBucket`(`prompt_tokens`/`completion_tokens`/`total_tokens`/`calls`/`estimated_cost_usd`)이
+  usage summary·billing summary가 공유하는 최소 단위다. `estimated_cost_usd`는 백엔드가 litellm의
+  실시간 가격표를 받아 계산한 추정치 — 표에 없는 모델이면 0으로 나올 수 있다는 점을 UI에
+  안내했다(`InfoTooltip`).
+- **`usage/summary.source`("actual"|"estimated")** — OpenAI Admin Usage API 키가 있으면
+  `total`/`by_day`가 실제 값, 없으면 로컬 로그 기준 추정치(계측 시작 이후만 집계돼 과소 집계될
+  수 있음)다. `by_feature`/`status_counts`는 OpenAI API가 모르는 개념이라 source와 무관하게 항상
+  로컬 로그 기준. `UsagePanel`은 `source === "estimated"`일 때만 안내 문구를 보여준다.
+- **`billing/summary`도 같은 이유로 `cost_source`("actual"|"estimated")를 갖고, `actual_available`은
+  둘 다 정상 케이스다** — 키가 있으면 `true` + `daily_actual`(실제 일별 청구액 USD/KRW)이 채워지고,
+  없으면 `false`에 `daily_actual`은 항상 빈 배열. 금액은 `today_usd`/`today_krw`/`this_month_usd`/
+  `this_month_krw`가 최상위 필드로 오고(구 `today_estimated`/`this_month_estimated` 폐지, breaking
+  change), 토큰/호출수만 `today_tokens`/`this_month_tokens`(`UsageBucket`)로 남는다.
+  `UsagePanel`은 `cost_source === "estimated"`면 "실제 청구액 연동 대기 중" 안내만 보여주고
+  `daily_actual` 리스트를 숨긴다.
+- **비용 추이 차트(`UsagePanel`의 "비용 추이" 카드)** — 일별(이번 달 `usage/summary` `by_day`)·
+  월별(올해 `usage/summary`의 `by_day`를 프론트에서 달 단위로 합산)·올해(연도 `total`, 점 하나라
+  차트 대신 큰 숫자로 표시) 3단 토글. 각 포인트 호버 시 `<title>`로 USD·KRW를 함께 보여준다.
+  **연도 간 비교는 지원하지 않는다** — `usage/summary`가 항상 "지금부터 그 period 시작까지"만
+  주고 임의 과거 연도를 조회할 방법이 없어서, "올해"는 늘 현재 연도 하나뿐이다.
+  `src/components/charts/index.tsx`의 `AreaTrend`(대시보드 문서 처리량 추이와 공유)에
+  `tooltip`/`ariaLabel` 커스터마이즈 prop을 추가해 재사용했다.
+  ⚠️ **`usage/summary?period=year`처럼 넓은 기간은 실제 OpenAI Usage/Costs API를 거치느라 느릴 수
+  있다** — 기본 15초 타임아웃보다 오래 걸려 실패하는 걸 겪어서 `admin.ts`의 usage/billing
+  엔드포인트만 `timeoutMs: 30000`으로 올렸고, 일별/월별 두 조회를 `Promise.all`로 묶지 않는다
+  (하나가 느리거나 타임아웃 나도 다른 granularity는 그대로 쓸 수 있어야 해서).
+- `usage/logs`·`rag/logs`는 `{items, total, page, size}` 모양(퀴즈의 `Paginated<T>`와 달리
+  `limit`이 아니라 `size`) — `LLMUsageLogPage`/`RagAdminLogPage`로 따로 타입을 뒀다.
+- `RagAdminLogRead.citations`는 `/rag/query` 응답의 citation과 같은 구조(`document_name` 등)이지만
+  타입이 `Record<string, unknown>[]`라 필드가 자유롭다 — `RagLogsPanel`은 `document_name` 없으면
+  `source`, 그것도 없으면 객체를 그대로 문자열화해서 보여준다.
+- `search/keywords`는 형태소 분석(`kiwipiepy`)에 의존한다 — 백엔드 이미지에 이 패키지가 없으면
+  브라우저 콘솔에는 CORS 에러로 보이지만 실제로는 500(미설치 모듈)이다. 프론트는 그 경우도 그냥
+  `ErrorBanner`로 처리해 화면이 깨지진 않는다.
+
 ## 12. 아직 라우터 없음 (⏳)
 
 - `/health` (✅ 존재, 프론트 미사용)

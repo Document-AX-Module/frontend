@@ -513,3 +513,26 @@ export function ReviewStatusBadge({ status }: { status: QuizReviewStatus | strin
     </span>
   );
 }
+
+/* 관리자 AI 운영 대시보드의 LLM 호출 성공/실패 상태. */
+const LLM_CALL_STATUS_STYLES: Record<string, { label: string; tone: StatusTone }> = {
+  success: { label: "성공", tone: "done" },
+  fail: { label: "실패", tone: "fail" },
+};
+
+export function llmCallStatusLabel(status: string): string {
+  return LLM_CALL_STATUS_STYLES[status]?.label ?? status;
+}
+
+export function LLMCallStatusBadge({ status }: { status: string }) {
+  const known = LLM_CALL_STATUS_STYLES[status];
+  return (
+    <span
+      className={`inline-flex shrink-0 items-center whitespace-nowrap rounded-full px-2.5 py-0.5 text-xs font-medium ${
+        TONE_STYLES[known?.tone ?? "idle"]
+      }`}
+    >
+      {known?.label ?? status}
+    </span>
+  );
+}

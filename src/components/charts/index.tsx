@@ -33,13 +33,17 @@ export function Sparkline({ data }: { data: number[] }) {
   );
 }
 
-/* --- 주간 처리 추이 (영역 + 선 + 점) --- */
+/* --- 추이 차트 (영역 + 선 + 점) --- */
 export function AreaTrend({
   data,
   labels,
+  tooltip,
+  ariaLabel,
 }: {
   data: number[];
   labels: string[];
+  tooltip?: (i: number) => string;
+  ariaLabel?: string;
 }) {
   const W = 660;
   const H = 240;
@@ -49,10 +53,10 @@ export function AreaTrend({
   const innerW = W - padX * 2;
   const innerH = H - padTop - padBottom;
   const max = Math.max(...data) * 1.2 || 1;
-  const step = innerW / (data.length - 1);
+  const step = data.length > 1 ? innerW / (data.length - 1) : 0;
 
   const pts = data.map((v, i) => ({
-    x: padX + i * step,
+    x: data.length > 1 ? padX + i * step : padX + innerW / 2,
     y: padTop + innerH * (1 - v / max),
     v,
   }));
@@ -60,6 +64,7 @@ export function AreaTrend({
   const baseY = padTop + innerH;
   const area = `${line} L${(padX + innerW).toFixed(1)} ${baseY} L${padX} ${baseY} Z`;
   const grid = [0, 0.25, 0.5, 0.75, 1];
+  const tip = tooltip ?? ((i: number) => `${labels[i]}: ${data[i]}건`);
 
   return (
     /* 포인트별 `<title>`은 호버 정보만 줄 뿐, 차트 자체에 라벨이 없으면
@@ -68,9 +73,10 @@ export function AreaTrend({
       viewBox={`0 0 ${W} ${H}`}
       className="h-auto w-full"
       role="img"
-      aria-label={`최근 ${data.length}일 문서 처리량 추이. ${labels
-        .map((l, i) => `${l} ${data[i]}건`)
-        .join(", ")}.`}
+      aria-label={
+        ariaLabel ??
+        `최근 ${data.length}일 문서 처리량 추이. ${labels.map((l, i) => `${l} ${data[i]}건`).join(", ")}.`
+      }
     >
       <defs>
         <linearGradient id="areaFill" x1="0" y1="0" x2="0" y2="1">
@@ -98,23 +104,26 @@ export function AreaTrend({
       {pts.map((p, i) => (
         <g key={i}>
           <circle cx={p.x} cy={p.y} r="4" fill="#fff" stroke={RED} strokeWidth="2" />
-          <title>{`${labels[i]}: ${p.v}건`}</title>
+          <title>{tip(i)}</title>
         </g>
       ))}
 
-      {/* x축 라벨 */}
-      {pts.map((p, i) => (
-        <text
-          key={i}
-          x={p.x}
-          y={H - 12}
-          textAnchor="middle"
-          className="fill-[var(--color-ink-muted)]"
-          fontSize="11"
-        >
-          {labels[i]}
-        </text>
-      ))}
+      {/* x축 라벨 — 점이 많으면 겹치지 않도록 일부만 그린다 */}
+      {pts.map((p, i) => {
+        const skip = pts.length > 15 && i % Math.ceil(pts.length / 15) !== 0;
+        return skip ? null : (
+          <text
+            key={i}
+            x={p.x}
+            y={H - 12}
+            textAnchor="middle"
+            className="fill-[var(--color-ink-muted)]"
+            fontSize="11"
+          >
+            {labels[i]}
+          </text>
+        );
+      })}
     </svg>
   );
 }

@@ -46,6 +46,7 @@ that cover the code you are about to touch.
 | [docs/features/notifications.md](docs/features/notifications.md) | the Topbar bell (polling), Web Push (`sw.js`, VAPID, secure context), PWA manifest |
 | [docs/features/mypage.md](docs/features/mypage.md) | `/mypage` |
 | [docs/features/embedding-lab.md](docs/features/embedding-lab.md) | `/embedding-lab` (admin-only): model activation/reembed, benchmark datasets/runs/apply, document migration |
+| [docs/features/ai-ops.md](docs/features/ai-ops.md) | `/ai-ops` (admin-only): token usage/cost, RAG search keyword ranking, LLM call logs, search-answer logs |
 | [docs/features/quiz.md](docs/features/quiz.md) | `/quiz`: question bank, quiz books, the `has_sessions` edit lock, server-session take/grade flow |
 | [docs/features/rag-search.md](docs/features/rag-search.md) | `/search`: RAG chat, SSE streaming (`rag.ts`'s `queryStream`), project scope picker, conversation list/reopen, citation rendering |
 | [docs/roadmap.md](docs/roadmap.md) | anything still mock: `AiPanel`'s classify/validate/related tabs; backend/platform context |

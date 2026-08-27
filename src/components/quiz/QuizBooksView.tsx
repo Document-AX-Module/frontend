@@ -258,6 +258,15 @@ function QuizBookCard({
                 🔒 수정 잠김
               </span>
             )}
+            {book.due_at && (
+              <span
+                className={`shrink-0 rounded-full px-2 py-0.5 text-xs font-medium ${
+                  isOverdue(book.due_at) ? TONE_STYLES.fail : TONE_STYLES.idle
+                }`}
+              >
+                마감 {formatDateTime(book.due_at)}
+              </span>
+            )}
           </div>
           <p className="mt-1 text-xs leading-relaxed text-ink-muted">
             {book.description || "설명 없음"}
@@ -278,29 +287,11 @@ function QuizBookCard({
         />
       </div>
 
-      <div className="flex flex-wrap items-center gap-1.5 text-xs text-ink-muted">
-        <span className="rounded-full bg-surface-2 px-2.5 py-0.5">
-          {questionCount == null ? "…" : `${questionCount}문제`}
-        </span>
-        <span className="rounded-full bg-surface-2 px-2.5 py-0.5">
-          {timeLimitLabel(book.time_limit_minutes)}
-        </span>
-        <span className="rounded-full bg-surface-2 px-2.5 py-0.5">합격 {book.passing_score}점</span>
-        {book.due_at && (
-          <span
-            className={`rounded-full px-2.5 py-0.5 font-medium ${
-              isOverdue(book.due_at) ? TONE_STYLES.fail : TONE_STYLES.idle
-            }`}
-          >
-            마감 {formatDateTime(book.due_at)}
-          </span>
-        )}
-        {book.assignees.length > 0 && (
-          <span className="rounded-full bg-surface-2 px-2.5 py-0.5">
-            {book.assignees.length}명 지정
-          </span>
-        )}
-      </div>
+      <p className="text-xs text-ink-muted">
+        {questionCount == null ? "…" : `${questionCount}문제`} ·{" "}
+        {timeLimitLabel(book.time_limit_minutes)} · 합격 {book.passing_score}점
+        {book.assignees.length > 0 && <> · {book.assignees.length}명 지정</>}
+      </p>
 
       {sources.length > 0 && (
         <p className="truncate text-xs text-ink-muted" title={sources.join(", ")}>

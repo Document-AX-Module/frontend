@@ -717,3 +717,86 @@ export type QuizSessionResult = QuizSession & { answers: QuizAnswerRecord[] };
 
 /* --- Common --- */
 export type Paginated<T> = { items: T[]; total: number; page: number; limit: number };
+
+/* --- 관리자 AI 운영 대시보드 (admin.ts) — 백엔드 app/schemas/admin.py 반영 --- */
+export type AdminUsagePeriod = "day" | "month" | "year";
+
+export type UsageBucket = {
+  prompt_tokens: number;
+  completion_tokens: number;
+  total_tokens: number;
+  calls: number;
+  estimated_cost_usd: number;
+};
+
+export type AdminCostSource = "actual" | "estimated";
+
+export type UsageSummary = {
+  model: string;
+  period_start: string;
+  period_end: string;
+  source: AdminCostSource;
+  total: UsageBucket;
+  by_day: Record<string, UsageBucket>;
+  by_feature: Record<string, UsageBucket>;
+  status_counts: Record<string, number>;
+  avg_tokens_per_call: number;
+  avg_cost_per_call_usd: number;
+};
+
+export type LLMUsageLog = {
+  id: number;
+  feature: string;
+  user_id: number | null;
+  project_id: number | null;
+  model: string;
+  status: "success" | "fail" | string;
+  prompt_tokens: number | null;
+  completion_tokens: number | null;
+  total_tokens: number | null;
+  latency_ms: number | null;
+  error_message: string | null;
+  created_at: string;
+};
+
+export type LLMUsageLogPage = { items: LLMUsageLog[]; total: number; page: number; size: number };
+
+export type BillingDaily = { date: string; amount_usd: number; amount_krw: number | null };
+
+export type BillingSummary = {
+  actual_available: boolean;
+  cost_source: AdminCostSource;
+  usd_krw_rate: number;
+  exchange_rate_as_of: string;
+  today_usd: number;
+  today_krw: number;
+  this_month_usd: number;
+  this_month_krw: number;
+  today_tokens: UsageBucket;
+  this_month_tokens: UsageBucket;
+  daily_actual: BillingDaily[];
+};
+
+export type KeywordCount = { keyword: string; count: number };
+
+export type KeywordRanking = {
+  period_start: string;
+  period_end: string;
+  items: KeywordCount[];
+};
+
+export type RagAdminLog = {
+  message_id: number;
+  conversation_id: number;
+  user_id: number;
+  question: string | null;
+  answer: string;
+  citations: Record<string, unknown>[] | null;
+  provider: string | null;
+  retrieved_count: number | null;
+  latency_ms: number | null;
+  confidence: number | null;
+  created_at: string;
+};
+
+export type RagAdminLogPage = { items: RagAdminLog[]; total: number; page: number; size: number };
