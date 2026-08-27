@@ -10,6 +10,7 @@ import {
   ErrorBanner,
   FOCUS_RING,
   Textarea,
+  TONE_STYLES,
 } from "@/components/ui/primitives";
 import { ConfirmDialog } from "@/components/ui/Modal";
 import { useAuth } from "@/components/auth/AuthProvider";
@@ -23,7 +24,7 @@ import type {
   QuizSessionMode,
 } from "@/lib/types";
 import { QuizPageShell } from "./QuizPageShell";
-import { timeLimitLabel } from "./quizFormat";
+import { formatDateTime, isOverdue, timeLimitLabel } from "./quizFormat";
 
 function formatClock(totalSeconds: number): string {
   const m = Math.floor(Math.max(totalSeconds, 0) / 60);
@@ -101,6 +102,7 @@ export function QuizTake({ quizBookId }: { quizBookId: string }) {
     return (
       <StartScreen
         book={book}
+        currentUserId={user.id}
         onStarted={(started) => setSession(started)}
         error={error}
         onError={setError}
@@ -122,11 +124,13 @@ export function QuizTake({ quizBookId }: { quizBookId: string }) {
 
 function StartScreen({
   book,
+  currentUserId,
   onStarted,
   error,
   onError,
 }: {
   book: QuizBook;
+  currentUserId: number;
   onStarted: (s: {
     id: number;
     mode: QuizSessionMode;
@@ -138,6 +142,8 @@ function StartScreen({
   onError: (message: string | null) => void;
 }) {
   const [mode, setMode] = useState<QuizSessionMode>("study");
+  const isAssignedToMe = book.assignees.some((a) => a.user_id === currentUserId);
+  const overdue = isOverdue(book.due_at);
   const [starting, setStarting] = useState(false);
 
   async function start() {
@@ -171,6 +177,17 @@ function StartScreen({
 
       <div className="mx-auto w-full max-w-2xl">
         <Card className="flex flex-col gap-5 p-6">
+          {isAssignedToMe && (
+            <p
+              className={`rounded-control p-3 text-xs leading-relaxed ${
+                overdue ? TONE_STYLES.fail : TONE_STYLES.active
+              }`}
+            >
+              {overdue ? "마감이 지났습니다" : "이 퀴즈에 배정되었습니다"}
+              {book.due_at && <> — 마감 {formatDateTime(book.due_at)}</>}
+            </p>
+          )}
+
           <div>
             <h1 className="text-lg font-semibold text-ink">{book.title}</h1>
             {book.description && (

@@ -349,6 +349,8 @@ const NOTIFICATION_LABELS: Record<NotificationType, string> = {
   "text_proofread.fail": "맞춤법 검사 실패",
   "quiz_generate.complete": "문제 생성 완료",
   "quiz_generate.fail": "문제 생성 실패",
+  "quiz.assigned": "퀴즈 배정",
+  "quiz.due_soon": "마감 임박",
 };
 
 export function notificationTypeLabel(type: NotificationType | string): string {

@@ -516,7 +516,9 @@ export type NotificationType =
   | "text_proofread.complete"
   | "text_proofread.fail"
   | "quiz_generate.complete"
-  | "quiz_generate.fail";
+  | "quiz_generate.fail"
+  | "quiz.assigned"
+  | "quiz.due_soon";
 
 export type NotificationItem = {
   id: number;
@@ -592,6 +594,13 @@ export type QuizQuestionPlay = {
   difficulty: QuizDifficulty | string;
 };
 
+export type QuizBookAssignee = {
+  user_id: number;
+  user_name: string | null;
+  user_email: string | null;
+  assigned_at: string;
+};
+
 export type QuizBook = {
   id: number;
   project_id: number;
@@ -604,6 +613,8 @@ export type QuizBook = {
   shuffle_options: boolean;
   allow_retake: boolean;
   reveal_answers: boolean;
+  due_at: string | null;
+  assignees: QuizBookAssignee[];
   has_sessions: boolean;
   created_by_user_id: number | null;
   can_manage: boolean;
@@ -621,6 +632,8 @@ export type QuizBookCreate = {
   shuffle_options?: boolean;
   allow_retake?: boolean;
   reveal_answers?: boolean;
+  due_at?: string | null;
+  assignee_user_ids?: number[];
 };
 
 export type QuizBookUpdate = Partial<QuizBookCreate>;

@@ -204,7 +204,7 @@
   `project.invite` · `project.invite_accepted` · `project.invite_declined` ·
   `project.member_removed` · `analysis.complete` · `analysis.fail` ·
   `text_proofread.complete` · `text_proofread.fail` · `quiz_generate.complete` ·
-  `quiz_generate.fail`. 활동 피드의 `kind`처럼
+  `quiz_generate.fail` · `quiz.assigned` · `quiz.due_soon`. 활동 피드의 `kind`처럼
   **프론트가 열거**하며, 라벨은 `notificationTypeLabel()`/`NotificationTypeBadge`가 유일한 출처다.
   뱃지는 타입 간 톤 구분 없이 무채색 하나로 통일한다.
 - **SSE/WebSocket이 없다** → 벨은 폴링이다: 60초 주기 + `window` focus + 서비스워커 postMessage.
@@ -261,10 +261,10 @@
 | POST | `/projects/{project_id}/quiz-questions` (201) | ✅ `QuestionFormModal` — 서버가 `generation_type=MANUAL`/`review_status=DRAFT` 고정 |
 | PATCH | `/quiz-questions/{question_id}` | ✅ 부분 수정. **문제집 잠금과 무관** (409 없음) |
 | DELETE | `/quiz-questions/{question_id}` (204) | ✅ 문제은행에서 완전 삭제 — 담고 있던 문제집에서도 빠지지만 과거 응시 결과는 스냅샷이라 유지 |
-| GET | `/projects/{project_id}/quizzes` | ✅ `QuizBooksView` — **문항 수는 응답에 없어** 문제집별로 `/questions`를 따로 센다. `QuizBookRead`는 `created_by_user_id`/`can_manage`(생성자·프로젝트 소유자·admin만 true)도 내려준다 |
-| POST | `/projects/{project_id}/quizzes` (201) | ✅ 문제집 생성 모달 |
+| GET | `/projects/{project_id}/quizzes` | ✅ `QuizBooksView` — **문항 수는 응답에 없어** 문제집별로 `/questions`를 따로 센다. `QuizBookRead`는 `created_by_user_id`/`can_manage`(생성자·프로젝트 소유자·admin만 true)와 `due_at`/`assignees`(아래 참고)도 내려준다 |
+| POST | `/projects/{project_id}/quizzes` (`due_at`, `assignee_user_ids` 포함, 201) | ✅ 문제집 생성 폼 — `assignee_user_ids`를 보내면 생성 즉시 `quiz.assigned` 알림 발송. 프로젝트 활성 멤버가 아니면 400 |
 | GET | `/quizzes/{quiz_book_id}` | ✅ `QuizBookDetail` |
-| PATCH | `/quizzes/{quiz_book_id}` | ✅ 설정 탭 — 🔒 409(응시 이력) · 🚫 403(`can_manage=false`) |
+| PATCH | `/quizzes/{quiz_book_id}` (`due_at`, `assignee_user_ids` 포함) | ✅ 설정 탭 — 🔒 409(응시 이력) · 🚫 403(`can_manage=false`) · `assignee_user_ids`를 보내면 지정자 **전체가 교체**되고 새로 추가된 사람에게만 `quiz.assigned` 재발송(기존 지정자는 재발송 안 함), 활성 멤버가 아니면 400 |
 | DELETE | `/quizzes/{quiz_book_id}` (204) | ✅ 잠금과 무관하게 항상 허용, 세션/답변 cascade 삭제 — 🚫 403(`can_manage=false`) |
 | POST | `/quizzes/{quiz_book_id}/duplicate` (201) | ✅ 잠긴 문제집 편집 경로 — 복제 후 새 문제집으로 이동. `can_manage`와 무관하게 프로젝트 멤버 전체 허용 |
 | GET | `/quizzes/{quiz_book_id}/questions` | ✅ 순서대로, 정답 포함 (편집 화면용) |
@@ -304,6 +304,14 @@ AI 문제 생성은 **검색이 아니라 커버리지 방식**이다 — 질의
    순서만 섞고 제출은 항상 서버가 준 배열의 **원본 인덱스**로 한다 (`QuizTake`의 `displayOrder`).
 4. **제출 시 모든 문항을 보낸다.** 서버는 실제로 기록된 답변 수로 `total_count`를 계산하므로,
    답하지 않은 문항을 빼고 보내면 분모에서 빠져 점수가 부풀려진다 — 무응답도 `""`로 보낸다.
+
+**응시자 지정(`assignee_user_ids`)과 마감기한(`due_at`)은 `has_sessions` 잠금에 걸리는 일반 설정
+필드다** — 생성/`PATCH` 둘 다 다른 필드와 같은 자리에서 받고, 잠긴 문제집은 이것도 못 고친다.
+지정자는 **그 프로젝트의 활성(active) 멤버**여야 하며(아니면 400), `assignee_user_ids`는 항상
+**전체 교체**라 일부만 추가/삭제하는 API는 없다 — 프론트는 현재 지정자를 미리 체크해 둔 멤버
+목록에서 다시 전체를 보낸다. 마감이 `quiz_due_reminder_window_hours`(백엔드 설정, 기본 24시간)
+이내로 남으면 아직 제출하지 않은 지정자에게 `quiz.due_soon` 알림이 서버 백그라운드 스레드로
+자동 발송된다 — 프론트가 트리거할 방법은 없다.
 
 `QuizQuestionType`은 `SINGLE_CHOICE` · `TRUE_FALSE` · `SHORT_ANSWER` 외에 `ESSAY`(서술형)가
 있다. `ESSAY`는 `options` 없이 `correct_answer`가 모범답안, `explanation`이 채점기준 역할이고,

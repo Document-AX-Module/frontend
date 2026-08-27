@@ -19,19 +19,37 @@ import {
   QuestionTypeBadge,
   DifficultyBadge,
   ReviewStatusBadge,
+  TONE_STYLES,
 } from "@/components/ui/primitives";
 import { Modal, ConfirmDialog } from "@/components/ui/Modal";
+import { DateTimePicker } from "@/components/ui/DateTimePicker";
 import { IconMenu } from "@/components/ui/IconMenu";
 import { SearchInput } from "@/components/ui/FilterBar";
 import { useAuth } from "@/components/auth/AuthProvider";
 import { errorMessage, isAuthError } from "@/lib/api";
 import { listDocuments } from "@/lib/documents";
+import { listProjectMembers } from "@/lib/projects";
 import * as quizApi from "@/lib/quiz";
-import type { Document, QuizBook, QuizQuestion, QuizSession } from "@/lib/types";
+import type { Document, ProjectMember, QuizBook, QuizQuestion, QuizSession } from "@/lib/types";
 import { QuizPageShell } from "./QuizPageShell";
 import { GenerateQuestionsModal } from "./GenerateQuestionsModal";
-import { LockedBanner, ManageOnlyNotice, QuizToggleField } from "./QuizFields";
-import { formatDateTime, formatScore, sourceLabel } from "./quizFormat";
+import {
+  AssigneePicker,
+  AssigneeSearchPicker,
+  LockedBanner,
+  ManageOnlyNotice,
+  QuizToggleField,
+  type SelectedAssignee,
+} from "./QuizFields";
+import { useQuizProject } from "./QuizProjectProvider";
+import {
+  formatDateTime,
+  formatScore,
+  fromDatetimeLocalInput,
+  isOverdue,
+  sourceLabel,
+  toDatetimeLocalInput,
+} from "./quizFormat";
 
 const tabs = [
   { key: "questions", label: "문제" },
@@ -74,26 +92,35 @@ export function QuizBookDetail({
   const [needLogin, setNeedLogin] = useState(false);
   const [duplicating, setDuplicating] = useState(false);
 
-  const load = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const [b, qs] = await Promise.all([
-        quizApi.getBook(quizBookId),
-        quizApi.listBookQuestions(quizBookId),
-      ]);
-      setBook(b);
-      setQuestions(qs);
-      listDocuments(String(b.project_id))
-        .then(setDocuments)
-        .catch(() => setDocuments([]));
-    } catch (e) {
-      setError(errorMessage(e, "문제집을 불러오지 못했습니다."));
-      setNeedLogin(isAuthError(e));
-    } finally {
-      setLoading(false);
-    }
-  }, [quizBookId]);
+  /**
+   * `silent`가 없으면 `loading`을 켜서 전체 화면을 비웠다가 다시 그린다 — 최초 진입용.
+   * 저장/변경 후 재조회(`onSaved`/`onChanged`)는 `silent: true`로 불러 화면을 유지해야
+   * `SettingsTab` 등 하위 탭이 리마운트되지 않고, "저장됐습니다" 같은 로컬 확인 상태가
+   * 리셋되지 않는다.
+   */
+  const load = useCallback(
+    async (opts?: { silent?: boolean }) => {
+      if (!opts?.silent) setLoading(true);
+      setError(null);
+      try {
+        const [b, qs] = await Promise.all([
+          quizApi.getBook(quizBookId),
+          quizApi.listBookQuestions(quizBookId),
+        ]);
+        setBook(b);
+        setQuestions(qs);
+        listDocuments(String(b.project_id))
+          .then(setDocuments)
+          .catch(() => setDocuments([]));
+      } catch (e) {
+        setError(errorMessage(e, "문제집을 불러오지 못했습니다."));
+        setNeedLogin(isAuthError(e));
+      } finally {
+        if (!opts?.silent) setLoading(false);
+      }
+    },
+    [quizBookId],
+  );
 
   useEffect(() => {
     if (authLoading) return;
@@ -132,11 +159,22 @@ export function QuizBookDetail({
       <PageHeader
         title={book.title}
         titleBadge={
-          book.has_sessions ? (
-            <span className="rounded-full bg-surface-2 px-2 py-0.5 text-xs text-ink-muted">
-              🔒 수정 잠김
-            </span>
-          ) : undefined
+          <>
+            {book.has_sessions && (
+              <span className="rounded-full bg-surface-2 px-2 py-0.5 text-xs text-ink-muted">
+                🔒 수정 잠김
+              </span>
+            )}
+            {book.due_at && (
+              <span
+                className={`rounded-full px-2 py-0.5 text-xs font-medium ${
+                  isOverdue(book.due_at) ? TONE_STYLES.fail : TONE_STYLES.idle
+                }`}
+              >
+                마감 {formatDateTime(book.due_at)}
+              </span>
+            )}
+          </>
         }
         description={book.description ?? undefined}
         actions={
@@ -186,11 +224,15 @@ export function QuizBookDetail({
           book={book}
           questions={questions}
           documentNames={documentNames}
-          onChanged={load}
+          onChanged={() => load({ silent: true })}
         />
       )}
       {active === "settings" && (
-        <SettingsTab book={book} questionCount={questions.length} onSaved={load} />
+        <SettingsTab
+          book={book}
+          questionCount={questions.length}
+          onSaved={() => load({ silent: true })}
+        />
       )}
       {active === "results" && <ResultsTab book={book} currentUserId={user?.id ?? null} />}
     </QuizPageShell>
@@ -507,9 +549,33 @@ function SettingsTab({
   const [shuffleOptions, setShuffleOptions] = useState(book.shuffle_options);
   const [allowRetake, setAllowRetake] = useState(book.allow_retake);
   const [revealAnswers, setRevealAnswers] = useState(book.reveal_answers);
+  const [dueAt, setDueAt] = useState(toDatetimeLocalInput(book.due_at));
+  const [assignees, setAssignees] = useState<SelectedAssignee[]>(
+    book.assignees.map((a) => ({ user_id: a.user_id, name: a.user_name, email: a.user_email ?? "" })),
+  );
+  const assigneeIds = assignees.map((a) => a.user_id);
+  const [members, setMembers] = useState<ProjectMember[]>([]);
+  const [memberQuery, setMemberQuery] = useState("");
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const { projects } = useQuizProject();
+  const isPublicProject =
+    projects.find((p) => p.id === book.project_id)?.visibility === "public";
+
+  useEffect(() => {
+    let cancelled = false;
+    listProjectMembers(String(book.project_id))
+      .then((list) => {
+        if (!cancelled) setMembers(list.filter((m) => m.status === "active"));
+      })
+      .catch(() => {
+        if (!cancelled) setMembers([]);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [book.project_id]);
 
   async function handleSave() {
     setSaving(true);
@@ -525,6 +591,8 @@ function SettingsTab({
         shuffle_options: shuffleOptions,
         allow_retake: allowRetake,
         reveal_answers: revealAnswers,
+        due_at: fromDatetimeLocalInput(dueAt),
+        assignee_user_ids: assigneeIds,
       });
       setSaved(true);
       await onSaved();
@@ -618,6 +686,50 @@ function SettingsTab({
           onChange={setRevealAnswers}
           disabled={locked || !canManage}
         />
+      </div>
+
+      <div className="flex flex-col gap-3 border-t border-border pt-5">
+        <Field label="마감기한" htmlFor={`${uid}-due`}>
+          <DateTimePicker
+            id={`${uid}-due`}
+            value={dueAt}
+            onChange={setDueAt}
+            disabled={locked || !canManage}
+          />
+        </Field>
+        <div>
+          <p className="mb-1.5 text-xs font-medium text-ink">
+            응시자 지정
+            {assigneeIds.length > 0 && (
+              <span className="ml-1.5 font-normal text-ink-muted">{assigneeIds.length}명</span>
+            )}
+          </p>
+          {isPublicProject ? (
+            <AssigneeSearchPicker
+              selected={assignees}
+              onAdd={(user) => setAssignees((prev) => [...prev, user])}
+              onRemove={(userId) =>
+                setAssignees((prev) => prev.filter((a) => a.user_id !== userId))
+              }
+              disabled={locked || !canManage}
+            />
+          ) : (
+            <AssigneePicker
+              members={members}
+              selectedUserIds={assigneeIds}
+              onToggle={(member) =>
+                setAssignees((prev) =>
+                  prev.some((a) => a.user_id === member.user_id)
+                    ? prev.filter((a) => a.user_id !== member.user_id)
+                    : [...prev, { user_id: member.user_id, name: member.name, email: member.email }],
+                )
+              }
+              disabled={locked || !canManage}
+              query={memberQuery}
+              onQueryChange={setMemberQuery}
+            />
+          )}
+        </div>
       </div>
 
       <div className="flex items-center justify-end gap-2 border-t border-border pt-4">

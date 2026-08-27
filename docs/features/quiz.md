@@ -28,7 +28,7 @@ top-k)이 아니라 **커버리지** 방식이다 — topic을 받지 않고 지
 | `components/quiz/QuizResult.tsx` | `/quiz/[id]/result` 점수 · 정답률 · 오답노트 |
 | `components/quiz/QuizTakePicker.tsx` | `/quiz/take` 응시할 문제집 선택 |
 | `components/quiz/QuizResultsOverview.tsx` | `/quiz/results` 내 응시 이력 |
-| `components/quiz/QuizFields.tsx` | 설정 토글 · 잠금 안내/배너(`LockedBanner`) · 권한 안내(`ManageOnlyNotice`) |
+| `components/quiz/QuizFields.tsx` | 설정 토글 · 잠금 안내/배너(`LockedBanner`) · 권한 안내(`ManageOnlyNotice`) · 응시자 선택(`AssigneePicker`) |
 | `components/quiz/quizFormat.ts` | 날짜·점수·답 표시 헬퍼 |
 
 enum(`QuizDifficulty` / `QuizQuestionType` / `QuizReviewStatus` …)은 `src/lib/types.ts`가 소유하고,
@@ -161,6 +161,37 @@ DELETE /quizzes/{id}/questions/{qid}
 - 403도 처리하지만 **새 헬퍼는 없다** — `errorMessage(e, fallback)`가 `ApiError.message`(서버
   메시지)를 이미 그대로 보여주므로, 기존 `isQuizLockedError(e) ? QUIZ_LOCKED_MESSAGE :
   errorMessage(e, fallback)` 패턴에 자연히 걸린다.
+
+## 응시자 지정 · 마감기한
+
+문제집 생성 폼(`QuizBookCreateView`)과 설정 탭(`QuizBookDetail`의 `SettingsTab`)에 "응시자
+지정" 섹션이 있다. 둘 다 `QuizFields.tsx`의 `AssigneePicker`(문서 출제 범위 체크박스 목록과
+같은 패턴 — 검색 + 체크박스)를 공유한다.
+
+- 후보는 `listProjectMembers(projectId)`로 받아 **`status === "active"`인 멤버만** 보여준다.
+  비활성 멤버를 지정하면 서버가 400을 낸다.
+- `assignee_user_ids`는 **항상 전체 교체**다(부분 추가/삭제 API 없음) — 설정 탭은
+  `book.assignees.map(a => a.user_id)`로 체크 상태를 초기화하고, 저장 시 현재 체크된 전체
+  목록을 다시 보낸다.
+- 마감기한(`due_at`)은 `src/components/ui/DateTimePicker.tsx`로 받는다 — 네이티브
+  `<input type="datetime-local">`은 클릭 시 뜨는 팝업 달력을 브라우저가 직접 그려서 배경과
+  구분되는 테두리·그림자를 CSS로 줄 수 없어(실제로 안 구분되는 환경이 있었다) 자체 UI(달력
+  그리드 + 시/분 `Select`)로 대체했다. 값 시그니처는 그대로 `datetime-local` 문자열
+  (`YYYY-MM-DDTHH:mm`, 타임존 없음)이라 백엔드가 주고받는 타임존 있는 ISO 문자열과는
+  `quizFormat.ts`의 `toDatetimeLocalInput`/`fromDatetimeLocalInput`로 왕복 변환한다.
+- **둘 다 `has_sessions` 잠금 대상이다** — 문제집 설정의 다른 필드와 마찬가지로 응시 이력이
+  생기면 못 고친다. `QuizBookCreateView`에는 잠금이 없어(생성 시점) 항상 편집 가능하다.
+- 지정하면(생성 시 또는 수정으로 새로 추가됐을 때만) 즉시 `quiz.assigned` 알림이 간다. 기존
+  지정자는 재발송되지 않는다.
+- 마감이 임박(백엔드 설정, 기본 24시간 이내)했는데 아직 제출하지 않은 지정자에게는 서버
+  백그라운드 스케줄러가 `quiz.due_soon`을 자동 발송한다 — 프론트가 관여할 부분은 없다.
+- `quiz.assigned`/`quiz.due_soon` 알림의 `url`은 문제집 상세(`/quiz/{id}`)가 아니라 **응시
+  화면(`/quiz/{id}/take`)**을 가리킨다 — 지정된 사람이 알림을 눌렀을 때 할 일은 "관리"가 아니라
+  "응시"이기 때문. `QuizTake`의 시작 화면(`StartScreen`)은 로그인한 사용자가
+  `book.assignees`에 있으면(알림을 거치지 않고 URL로 바로 들어와도 동일) 배정 안내 배너를
+  띄운다 — 마감이 지났으면(`isOverdue`) 강조색(`TONE_STYLES.fail`)으로 바뀐다.
+- `QuizBooksView`의 카드와 `QuizBookDetail`의 헤더는 `due_at`이 있으면 마감 칩을 보여주고,
+  지난 마감이면(`isOverdue`) 잠금 배지와 같은 자리에 강조색(`TONE_STYLES.fail`)으로 표시한다.
 
 ## 응시 흐름
 

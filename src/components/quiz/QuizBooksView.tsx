@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
-import { PageHeader, Card, buttonClass, ErrorBanner } from "@/components/ui/primitives";
+import { PageHeader, Card, buttonClass, ErrorBanner, TONE_STYLES } from "@/components/ui/primitives";
 import { ConfirmDialog } from "@/components/ui/Modal";
 import { IconMenu } from "@/components/ui/IconMenu";
 import { FilterBar } from "@/components/ui/FilterBar";
@@ -18,7 +18,7 @@ import {
   useQuizProject,
 } from "./QuizProjectProvider";
 import { QuizPageShell } from "./QuizPageShell";
-import { formatDate, formatScore, timeLimitLabel } from "./quizFormat";
+import { formatDate, formatDateTime, formatScore, isOverdue, timeLimitLabel } from "./quizFormat";
 
 export function QuizBooksView() {
   return (
@@ -286,6 +286,20 @@ function QuizBookCard({
           {timeLimitLabel(book.time_limit_minutes)}
         </span>
         <span className="rounded-full bg-surface-2 px-2.5 py-0.5">합격 {book.passing_score}점</span>
+        {book.due_at && (
+          <span
+            className={`rounded-full px-2.5 py-0.5 font-medium ${
+              isOverdue(book.due_at) ? TONE_STYLES.fail : TONE_STYLES.idle
+            }`}
+          >
+            마감 {formatDateTime(book.due_at)}
+          </span>
+        )}
+        {book.assignees.length > 0 && (
+          <span className="rounded-full bg-surface-2 px-2.5 py-0.5">
+            {book.assignees.length}명 지정
+          </span>
+        )}
       </div>
 
       {sources.length > 0 && (
