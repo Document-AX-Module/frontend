@@ -251,32 +251,33 @@
 
 ## 10. 퀴즈 (`quiz.ts`)
 
-백엔드 `app/api/v1/quiz.py` · `app/schemas/quiz.py`. 19개 전부 배선 완료.
+백엔드 `app/api/v1/quiz.py` · `app/schemas/quiz.py`. 20개 전부 배선 완료.
 문제은행/문제집/내 응시 이력은 **프로젝트 스코프**여서, `/quiz/*` 라우트는
 `QuizProjectProvider`가 들고 있는 "지금 보고 있는 프로젝트"를 붙여 호출한다.
 
 | Method | Path | 상태 |
 |---|---|---|
-| GET | `/projects/{project_id}/quiz-questions` (`?document_id=&difficulty=&type=&review_status=&q=`) | ✅ `QuestionBankView` — 필터는 전부 서버 쿼리 파라미터 |
+| GET | `/projects/{project_id}/quiz-questions` (`?document_id=&difficulty=&type=&review_status=&q=`) | ✅ `QuestionBankView` — 필터는 전부 서버 쿼리 파라미터. `QuizQuestionRead`는 `source_document_title`(문서명, 결과 화면 그룹핑용)도 내려준다 |
 | POST | `/projects/{project_id}/quiz-questions` (201) | ✅ `QuestionFormModal` — 서버가 `generation_type=MANUAL`/`review_status=DRAFT` 고정 |
 | PATCH | `/quiz-questions/{question_id}` | ✅ 부분 수정. **문제집 잠금과 무관** (409 없음) |
 | DELETE | `/quiz-questions/{question_id}` (204) | ✅ 문제은행에서 완전 삭제 — 담고 있던 문제집에서도 빠지지만 과거 응시 결과는 스냅샷이라 유지 |
-| GET | `/projects/{project_id}/quizzes` | ✅ `QuizBooksView` — **문항 수는 응답에 없어** 문제집별로 `/questions`를 따로 센다 |
+| GET | `/projects/{project_id}/quizzes` | ✅ `QuizBooksView` — **문항 수는 응답에 없어** 문제집별로 `/questions`를 따로 센다. `QuizBookRead`는 `created_by_user_id`/`can_manage`(생성자·프로젝트 소유자·admin만 true)도 내려준다 |
 | POST | `/projects/{project_id}/quizzes` (201) | ✅ 문제집 생성 모달 |
 | GET | `/quizzes/{quiz_book_id}` | ✅ `QuizBookDetail` |
-| PATCH | `/quizzes/{quiz_book_id}` | ✅ 설정 탭 — 🔒 409 |
-| DELETE | `/quizzes/{quiz_book_id}` (204) | ✅ 잠금과 무관하게 항상 허용, 세션/답변 cascade 삭제 |
-| POST | `/quizzes/{quiz_book_id}/duplicate` (201) | ✅ 잠긴 문제집 편집 경로 — 복제 후 새 문제집으로 이동 |
+| PATCH | `/quizzes/{quiz_book_id}` | ✅ 설정 탭 — 🔒 409(응시 이력) · 🚫 403(`can_manage=false`) |
+| DELETE | `/quizzes/{quiz_book_id}` (204) | ✅ 잠금과 무관하게 항상 허용, 세션/답변 cascade 삭제 — 🚫 403(`can_manage=false`) |
+| POST | `/quizzes/{quiz_book_id}/duplicate` (201) | ✅ 잠긴 문제집 편집 경로 — 복제 후 새 문제집으로 이동. `can_manage`와 무관하게 프로젝트 멤버 전체 허용 |
 | GET | `/quizzes/{quiz_book_id}/questions` | ✅ 순서대로, 정답 포함 (편집 화면용) |
-| POST | `/quizzes/{quiz_book_id}/questions` (`{question_ids}`) | ✅ 문제은행에서 편입 — 🔒 409 |
-| DELETE | `/quizzes/{quiz_book_id}/questions/{question_id}` (204) | ✅ 연결만 해제 — 🔒 409 |
-| POST | `/quizzes/{quiz_book_id}/sessions` (`{mode}`, 201) | ✅ 정답 빠진 문항 + `session_id`. 모드는 시작 시 서버에 고정 |
-| POST | `.../sessions/{session_id}/answers` | ✅ study 모드 즉시채점 (문항 1개씩) |
+| POST | `/quizzes/{quiz_book_id}/questions` (`{question_ids}`) | ✅ 문제은행에서 편입 — 🔒 409 · 🚫 403(`can_manage=false`) |
+| DELETE | `/quizzes/{quiz_book_id}/questions/{question_id}` (204) | ✅ 연결만 해제 — 🔒 409 · 🚫 403(`can_manage=false`) |
+| POST | `/quizzes/{quiz_book_id}/sessions` (`{mode}`, 201) | ✅ 정답 빠진 문항 + `session_id`. 모드는 시작 시 서버에 고정. `resumed`(재개 여부) · `answers`(재개 시 study 모드 기존 답변) · `draft_answers`(재개 시 exam 모드 임시저장 답변)도 내려준다 |
+| PATCH | `.../sessions/{session_id}/draft` (`{question_id, user_answer}`) | ✅ exam 모드 임시저장 — 답 고를 때마다 디바운스 호출, `{ draft_answers }` 반환 |
+| POST | `.../sessions/{session_id}/answers` | ✅ study 모드 즉시채점 (문항 1개씩). `ESSAY`는 `score`/`feedback`도 채워진다 |
 | POST | `.../sessions/{session_id}/submit` | ✅ 최종 제출 → 점수 집계 + 오답노트 |
-| GET | `/quizzes/{quiz_book_id}/sessions` | ✅ 문제집 결과 탭 — **전체 사용자** 세션 요약 |
-| GET | `.../sessions/{session_id}` | ✅ 세션 상세(오답노트) — **본인 세션만** |
-| GET | `/projects/{project_id}/quiz-sessions` | ✅ 결과·오답 화면 — 프로젝트 통틀어 **내** 이력 |
-| POST | `/projects/{project_id}/quiz-questions/generate` → `QuizGenerationJobRead` (202) | ✅ `GenerateQuestionsModal` — AI 문제 생성 시작 |
+| GET | `/quizzes/{quiz_book_id}/sessions` (`?status=IN_PROGRESS\|SUBMITTED`) | ✅ 문제집 결과 탭 — `can_manage=true`면 **전체 응시자**(`user_name`/`user_email` 포함), 아니면 **본인 세션만** |
+| GET | `.../sessions/{session_id}` | ✅ 세션 상세(오답노트) — 본인 세션이거나 `can_manage=true`. 관리자가 남의 세션을 볼 때는 `reveal_answers`와 무관하게 정답/해설이 항상 내려온다. `QuizAnswerRecord`는 `score`/`feedback`도 내려준다(`ESSAY`만, `reveal_answers=false`면 null) |
+| GET | `/projects/{project_id}/quiz-sessions` (`?status=IN_PROGRESS\|SUBMITTED`) | ✅ 결과·오답 화면 — 프로젝트 통틀어 **내** 이력 |
+| POST | `/projects/{project_id}/quiz-questions/generate` → `QuizGenerationJobRead` (202) | ✅ `GenerateQuestionsModal` — AI 문제 생성 시작. `types`에 `ESSAY` 지정 가능. `quiz_book_id`를 지정했는데 그 문제집을 `can_manage`할 수 없으면 403 |
 | GET | `/quiz-generation-jobs/{job_id}` | ✅ `GenerateQuestionsModal` 폴링 |
 
 AI 문제 생성은 **검색이 아니라 커버리지 방식**이다 — 질의(topic)를 받지 않고, 지정한 문서의
@@ -290,15 +291,23 @@ AI 문제 생성은 **검색이 아니라 커버리지 방식**이다 — 질의
 안내다. 409는 두 가지 다른 의미(대상 문서에 청크 없음 / 편입 문제집 응시 이력 있음)를 가져
 `isQuizLockedError`로 뭉뚱그리지 않고 서버 메시지를 그대로 보여준다.
 
-프론트가 반드시 지켜야 하는 세 가지:
+프론트가 반드시 지켜야 하는 네 가지:
 
 1. **`has_sessions`로 버튼을 미리 잠근다.** 서버(409)가 최종 방어선이지만 클릭 후 에러는 UX가
    나쁘다. 조회 시점과 수정 시점 사이에 상태가 바뀔 수 있으니 409도 항상 처리한다 —
    `isQuizLockedError` / `QUIZ_LOCKED_MESSAGE`.
-2. **`shuffle_options`는 백엔드가 섞지 않는다.** 정답이 `options` 인덱스라서다. 프론트가 표시
+2. **`can_manage`로도 버튼을 미리 잠근다 — `has_sessions`와 독립된 조건이다.** 생성자·프로젝트
+   소유자·admin이 아니면 수정/삭제/문항 편입·제외/자동 생성-편입이 403. 새 헬퍼는 필요 없다 —
+   `ApiError.message`가 서버 메시지를 그대로 담고 있어 기존 `errorMessage(e, fallback)`가 이미
+   보여준다. 복제(`duplicate`)만은 `can_manage`와 무관하게 항상 허용된다.
+3. **`shuffle_options`는 백엔드가 섞지 않는다.** 정답이 `options` 인덱스라서다. 프론트가 표시
    순서만 섞고 제출은 항상 서버가 준 배열의 **원본 인덱스**로 한다 (`QuizTake`의 `displayOrder`).
-3. **제출 시 모든 문항을 보낸다.** 서버는 실제로 기록된 답변 수로 `total_count`를 계산하므로,
+4. **제출 시 모든 문항을 보낸다.** 서버는 실제로 기록된 답변 수로 `total_count`를 계산하므로,
    답하지 않은 문항을 빼고 보내면 분모에서 빠져 점수가 부풀려진다 — 무응답도 `""`로 보낸다.
+
+`QuizQuestionType`은 `SINGLE_CHOICE` · `TRUE_FALSE` · `SHORT_ANSWER` 외에 `ESSAY`(서술형)가
+있다. `ESSAY`는 `options` 없이 `correct_answer`가 모범답안, `explanation`이 채점기준 역할이고,
+채점은 문항당 GPT 호출 1회라 지연이 있다.
 
 - 상세는 [features/quiz.md](features/quiz.md).
 

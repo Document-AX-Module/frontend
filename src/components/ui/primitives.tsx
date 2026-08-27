@@ -105,6 +105,27 @@ export function SectionTitle({ children }: { children: ReactNode }) {
   return <h2 className="text-base font-semibold text-ink">{children}</h2>;
 }
 
+export function InfoTooltip({ text }: { text: string }) {
+  return (
+    <span className="group relative inline-flex">
+      <span
+        tabIndex={0}
+        role="button"
+        aria-label="설명 보기"
+        className={`inline-flex h-4 w-4 shrink-0 cursor-help items-center justify-center rounded-full text-xs leading-none text-ink-muted hover:text-ink ${FOCUS_RING}`}
+      >
+        ⓘ
+      </span>
+      <span
+        role="tooltip"
+        className="pointer-events-none absolute left-0 top-full z-20 mt-1.5 w-56 rounded-control border border-border bg-canvas p-2 text-xs leading-relaxed text-ink-muted opacity-0 shadow-lg transition-opacity group-hover:opacity-100 group-focus-within:opacity-100"
+      >
+        {text}
+      </span>
+    </span>
+  );
+}
+
 const INPUT_FOCUS = "outline-none focus:border-primary focus:ring-2 focus:ring-primary/25";
 
 export type ButtonVariant = "primary" | "outline" | "ghost" | "dark";
@@ -448,6 +469,7 @@ const QUESTION_TYPE_STYLES: Record<QuizQuestionType, { label: string; className:
   SINGLE_CHOICE: { label: "객관식", className: "bg-sky-50 text-sky-700" },
   TRUE_FALSE: { label: "O/X", className: "bg-violet-50 text-violet-700" },
   SHORT_ANSWER: { label: "단답형", className: "bg-surface-2 text-ink-muted" },
+  ESSAY: { label: "서술형", className: "bg-amber-50 text-amber-700" },
 };
 
 export function questionTypeLabel(type: QuizQuestionType | string): string {

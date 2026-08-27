@@ -41,6 +41,14 @@ export function LockNotice() {
   );
 }
 
+export function ManageOnlyNotice() {
+  return (
+    <p className="rounded-control bg-surface p-3 text-xs leading-relaxed text-ink-muted">
+      문제집을 만든 사람만 수정할 수 있습니다.
+    </p>
+  );
+}
+
 export function LockedBanner({
   onDuplicate,
   busy,

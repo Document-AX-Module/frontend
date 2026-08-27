@@ -544,7 +544,7 @@ export type PushUnsubscribeRequest = { endpoint: string };
 
 /* --- Quiz --- */
 export type QuizDifficulty = "EASY" | "MEDIUM" | "HARD";
-export type QuizQuestionType = "SINGLE_CHOICE" | "TRUE_FALSE" | "SHORT_ANSWER";
+export type QuizQuestionType = "SINGLE_CHOICE" | "TRUE_FALSE" | "SHORT_ANSWER" | "ESSAY";
 export type QuizReviewStatus = "DRAFT" | "REVIEWED" | "APPROVED";
 export type QuizGenerationType = "AI" | "MANUAL";
 export type QuizSessionMode = "study" | "exam";
@@ -555,6 +555,7 @@ export type QuizQuestion = {
   id: number;
   project_id: number;
   source_document_id: number | null;
+  source_document_title: string | null;
   type: QuizQuestionType | string;
   text: string;
   options: string[] | null;
@@ -604,6 +605,8 @@ export type QuizBook = {
   allow_retake: boolean;
   reveal_answers: boolean;
   has_sessions: boolean;
+  created_by_user_id: number | null;
+  can_manage: boolean;
   created_at: string;
   updated_at: string;
 };
@@ -656,6 +659,9 @@ export type QuizSessionStartResponse = {
   session_id: number;
   mode: QuizSessionMode | string;
   questions: QuizQuestionPlay[];
+  resumed: boolean;
+  answers: QuizAnswerRecord[];
+  draft_answers: Record<string, string>;
 };
 
 /** study 모드 즉시채점 응답 */
@@ -663,6 +669,8 @@ export type QuizAnswerGradeResult = {
   is_correct: boolean;
   correct_answer: string;
   explanation: string;
+  score: number | null;
+  feedback: string | null;
 };
 
 export type QuizAnswerRecord = {
@@ -673,12 +681,16 @@ export type QuizAnswerRecord = {
   is_correct: boolean;
   correct_answer: string | null;
   explanation: string | null;
+  score: number | null;
+  feedback: string | null;
 };
 
 export type QuizSession = {
   id: number;
   quiz_book_id: number;
   user_id: number;
+  user_name: string | null;
+  user_email: string | null;
   mode: QuizSessionMode | string;
   status: QuizSessionStatus | string;
   created_at: string;

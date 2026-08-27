@@ -28,11 +28,16 @@ top-k)이 아니라 **커버리지** 방식이다 — topic을 받지 않고 지
 | `components/quiz/QuizResult.tsx` | `/quiz/[id]/result` 점수 · 정답률 · 오답노트 |
 | `components/quiz/QuizTakePicker.tsx` | `/quiz/take` 응시할 문제집 선택 |
 | `components/quiz/QuizResultsOverview.tsx` | `/quiz/results` 내 응시 이력 |
-| `components/quiz/QuizFields.tsx` | 설정 토글 · 잠금 안내/배너 |
+| `components/quiz/QuizFields.tsx` | 설정 토글 · 잠금 안내/배너(`LockedBanner`) · 권한 안내(`ManageOnlyNotice`) |
 | `components/quiz/quizFormat.ts` | 날짜·점수·답 표시 헬퍼 |
 
 enum(`QuizDifficulty` / `QuizQuestionType` / `QuizReviewStatus` …)은 `src/lib/types.ts`가 소유하고,
-라벨·배지는 `primitives.tsx`가 가진다 (`DocStatus`와 같은 구조).
+라벨·배지는 `primitives.tsx`가 가진다 (`DocStatus`와 같은 구조). `QuizQuestionType`에는
+`SINGLE_CHOICE` · `TRUE_FALSE` · `SHORT_ANSWER` 외에 서술형 `ESSAY`가 있다 — `options` 없이
+`correct_answer`가 모범답안, `explanation`이 채점기준이고, `QuizAnswerGradeResult`/
+`QuizAnswerRecord`의 `score`/`feedback`(0~100점 + GPT 코멘트, `ESSAY`만 값 있음)으로 채점 결과를
+보여준다. `QuizTake`/`QuizResult`는 유형을 따로 검사하지 않고 **`score != null`인지만** 보고
+O/X 대신 점수·코멘트 블록을 그린다.
 
 ## 폼은 페이지, 확인·선택은 모달
 
@@ -91,8 +96,11 @@ enum(`QuizDifficulty` / `QuizQuestionType` / `QuizReviewStatus` …)은 `src/lib
   `Dropdown`을 두고(문제집 생성 폼과 같은 패턴), 자동 편입할 문제집은 선택 사항이다
   (`quiz_book_id`를 안 보내면 문제은행에만 쌓인다). 편입 후보는 `has_sessions === true`인
   문제집을 미리 걸러서 보여준다.
-- **문제집 상세에서 열 때** — `fixedBook={{ id, title, project_id }}`. 프로젝트와 편입
-  문제집이 그 문제집으로 고정되고, 잠긴 문제집(`has_sessions`)이면 버튼 자체가 비활성화된다.
+- **문제집 상세에서 열 때** — `fixedBook={{ id, title, project_id, source_document_ids }}`.
+  프로젝트와 편입 문제집이 그 문제집으로 고정되고, 잠긴 문제집(`has_sessions`)이면 버튼 자체가
+  비활성화된다. 대상 문서도 그 문제집의 `source_document_ids`로 기본 선택되어 열린다(강제는
+  아니고 기본값이라 자유롭게 추가·해제 가능) — 문제집 생성 때 고른 출제 범위가 여기서도
+  기본 필터로 이어지는 것과 같은 패턴이다.
 
 흐름: `POST .../quiz-questions/generate`가 `status=RUNNING`인 `QuizGenerationJob`을 202로
 돌려주면, 모달이 `POLL_INTERVAL_MS`(2초) 간격으로 `GET /quiz-generation-jobs/{id}`를 불러
@@ -136,6 +144,24 @@ DELETE /quizzes/{id}/questions/{qid}
   - `PATCH /quiz-questions/{id}` (문항 내용 수정) — 문제은행 쪽 작업이라 409가 없다. 그래서
     잠긴 문제집에서도 "문제 수정" 메뉴는 열려 있다.
 
+## 권한 정책 (`can_manage`)
+
+**문제집은 만든 사람만(정확히는 생성자·프로젝트 소유자·admin만) 관리할 수 있다.** 잠금
+(`has_sessions`, 위 절)과 **완전히 독립된 조건**이다 — 하나는 "응시 이력이 있어 못 고침", 다른
+하나는 "내가 만든 사람이 아니라 못 고침"이며 두 조건이 동시에 적용될 수 있다.
+`QuizBookRead.can_manage`로 판단한다.
+
+- 설정 탭의 모든 입력/토글/저장 버튼과, 문제 탭의 "직접 작성"/"문제은행에서 추가"/"AI로 생성"
+  버튼·"문제집에서 제외" 메뉴는 `disabled={locked || !canManage}`처럼 두 조건을 OR로 합쳐
+  비활성화한다. `!canManage`일 때만(잠김과 별개로) `ManageOnlyNotice`(`QuizFields.tsx`) 안내
+  문구를 보여준다.
+- 문제집 목록의 "삭제"도 `can_manage`가 없으면 비활성화된다.
+- **복제(`POST .../duplicate`)는 예외다** — `can_manage`와 무관하게 프로젝트 멤버 전체가 항상
+  쓸 수 있다. `QuizBooksView`의 "복제해서 편집" 메뉴는 그대로 둔다.
+- 403도 처리하지만 **새 헬퍼는 없다** — `errorMessage(e, fallback)`가 `ApiError.message`(서버
+  메시지)를 이미 그대로 보여주므로, 기존 `isQuizLockedError(e) ? QUIZ_LOCKED_MESSAGE :
+  errorMessage(e, fallback)` 패턴에 자연히 걸린다.
+
 ## 응시 흐름
 
 서버 세션 기반이라 목업 시절과 흐름이 다르다.
@@ -147,6 +173,32 @@ DELETE /quizzes/{id}/questions/{qid}
 3. `study` 모드는 답할 때마다 `.../answers`를 불러 `is_correct`/정답/해설을 즉시 보여주고, 그
    문항은 다시 못 고친다(서버에 이미 기록됨). `exam` 모드는 답을 로컬에 들고 있는다.
 4. `.../submit` → 점수·정답수 집계 + 오답노트. 이후 `?session={id}`를 붙여 결과 화면으로 이동.
+
+### 진행 중 세션 재입장
+
+같은 문제집의 "응시 시작"을 다시 누르면(별도 API 없이) 서버가 진행 중이던 세션을 찾아 그대로
+재개한다 — 시작 응답에 `resumed: true`가 온다. 문항 순서는 항상 복원된다.
+
+- **study 모드**는 `answers`(`QuizAnswerRecord[]`)로 이미 채점된 답변이 함께 온다. `PlaySession`은
+  이걸 lazy initializer로 `answers`/`feedback` state에 프리필하고(각 레코드를
+  `QuizAnswerGradeResult` 모양으로 변환), 이미 채점된 문항은 `locked` 조건이 자동으로 걸린다.
+- **exam 모드는 `answers`가 항상 빈 배열이다** — 대신 `draft_answers`(문항 id 문자열 키 →
+  마지막 답)로 부분 답안을 복원한다(바로 아래 임시저장 참고).
+- 재입장 시 아직 안 푼 첫 문항으로 시작하고(`index`도 lazy initializer), 상단에 "이전에 응시하던
+  세션을 이어서 풉니다" 안내를 띄운다.
+- **문항이 하나도 없던 시점에 시작된 세션은 재개 대상에서 제외한다.** 응시 시작 당시 문제집에
+  문제가 0개면 `question_order`가 빈 배열로 저장되는데, 이런 세션을 계속 재개하면 이후 문제가
+  추가돼도 그 사용자는 영원히 "문제가 없다"는 응답만 받는다. 백엔드는 `existing.question_order`가
+  비어 있으면 그 세션을 버리고(삭제) 새 세션을 만든다(`QuizService.start_session`).
+
+### exam 모드 임시저장
+
+exam 모드는 최종 제출 전까지 서버에 답이 기록되지 않으므로, 중간에 이탈하면 원래 부분 답안이
+사라졌다. 이를 메우기 위해 `PATCH /quizzes/{id}/sessions/{session_id}/draft`
+(`{question_id, user_answer}`)를 답 고를 때마다(옵션 클릭, 단답형/서술형 입력) 600ms 디바운스로
+호출한다(`PlaySession`의 `pendingDraft` state + `useEffect` 디바운스 — 실패는 조용히 무시,
+최종 제출은 로컬 `answers`를 어차피 통째로 다시 보내므로 임시저장 실패가 채점에 영향 없다).
+응답의 `draft_answers`는 다음 재개 때 시작 응답에 그대로 실려 온다.
 
 주의할 세 가지:
 
@@ -165,9 +217,29 @@ DELETE /quizzes/{id}/questions/{qid}
 - `reveal_answers=false`인 문제집은 `correct_answer`/`explanation`이 null로 내려온다 → 정답 칸을
   숨기고 안내 문구를 띄운다.
 - 난이도·분야별 정답률은 레코드에 없는 정보라 `listBookQuestions`로 받아 `question_id`로 이어
-  붙인다. 삭제된 문항은 집계에서 빠진다.
-- `GET /quizzes/{id}/sessions`는 **전체 사용자** 요약이지만 세션 상세는 **본인 것만** 조회된다 →
-  문제집 결과 탭에서 남의 행은 링크로 만들지 않고 "내 응시" 배지로 구분한다.
+  붙인다. 삭제된 문항은 집계에서 빠진다. "분야별 정답률"의 그룹핑 키는 `tags`가 아니라
+  `QuizQuestionRead.source_document_title`(출처 문서 제목, 문항당 단일 값)이다 — 카드 제목은
+  그대로 "분야별 정답률".
+- `GET /quizzes/{id}/sessions`는 `QuizBookRead.can_manage`에 따라 스코프가 갈린다 —
+  **관리자면 전체 응시자**(`user_name`/`user_email` 포함), **아니면 본인 세션만** 온다.
+  세션 상세(`GET .../sessions/{session_id}`)도 본인 세션이거나 관리자면 남의 것도 조회된다(별도
+  엔드포인트 없이 목록에 뜬 세션 id로 그대로 호출). `ResultsTab`은 `book.can_manage`로 헤더 라벨
+  ("전체 응시자" / "내 응시 이력")과 응시자 이름 열 노출 여부를 정하고, 각 행은 관리자거나 본인
+  것이면 링크가 된다(그 외엔 진행 중 표시만). **관리자가 남의 세션을 볼 때는 `reveal_answers`
+  설정과 무관하게 정답·해설이 항상 내려온다** — 그 설정은 응시자 본인에게 언제 공개할지의
+  문제지 관리자를 가리는 게 아니기 때문. `QuizResult`는 조회 중인 세션이 로그인한 사용자 것이
+  아니면 상단에 "응시자: {이름}" 안내를 띄운다.
+- `listBookSessions`/`listMySessions`는 `?status=IN_PROGRESS|SUBMITTED` 필터를 받는다.
+  `QuizResultsOverview`(`/quiz/results`)와 마이페이지(`/mypage`)는 `status: "IN_PROGRESS"`로 따로
+  불러 "진행 중" 목록을 보여주고, 각 행은 `/quiz/{id}/take`로 링크한다(재입장은 응시 시작 버튼을
+  그대로 다시 쓰는 것과 같은 API).
+- `QuizBookDetail`의 탭 선택(문제/설정/응시 결과)은 `?tab=`으로 URL에도 반영된다
+  (`/quiz/[quizBookId]/page.tsx`가 서버에서 `searchParams.tab`을 읽어 `initialTab`으로 넘기고,
+  탭 클릭 시 `router.replace`로 같은 값을 써 넣는다). 응시 결과 탭에서 세션 하나를 눌러
+  `/quiz/{id}/result?session=...`로 들어갔다 브라우저 뒤로가기를 누르면 이 값 덕분에 "문제" 탭이
+  아니라 원래 보고 있던 "응시 결과" 탭으로 돌아온다 — 탭 상태가 순수 React state뿐이라 URL에
+  없으면 뒤로가기가 컴포넌트를 새로 마운트하며 기본값(`questions`)으로 리셋되던 문제였다.
+  `QuizResult`의 `BackLink`/"문제집으로" 링크도 항상 `?tab=results`를 붙여 같은 곳으로 보낸다.
 
 ## 알려진 거친 부분
 

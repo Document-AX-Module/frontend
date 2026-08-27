@@ -12,6 +12,7 @@ import {
   ErrorBanner,
   Field,
   Input,
+  InfoTooltip,
   Textarea,
   FOCUS_RING,
 } from "@/components/ui/primitives";
@@ -148,15 +149,15 @@ function CreateForm() {
         <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
           <Card className="overflow-hidden">
             <CardHeader>
-              <CardTitle>출제 범위</CardTitle>
+              <div className="flex items-center gap-1.5">
+                <CardTitle>출제 범위</CardTitle>
+                <InfoTooltip text="문제은행에서 문항을 고를 때 기본 필터로 쓰입니다. 비워 두면 전체 문서가 대상입니다." />
+              </div>
               <span className="text-xs text-ink-muted">
                 {sourceIds.length > 0 ? `${sourceIds.length}개 선택` : "선택"}
               </span>
             </CardHeader>
             <div className="flex flex-col gap-2.5 p-5">
-              <p className="text-xs text-ink-muted">
-                문제은행에서 문항을 고를 때 기본 필터로 쓰입니다. 비워 두면 전체 문서가 대상입니다.
-              </p>
               {documents.length > 8 && (
                 <SearchInput
                   value={docQuery}

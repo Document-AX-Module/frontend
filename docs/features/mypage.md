@@ -32,8 +32,15 @@ type MyPageSummary = {
   브라우저 구독 상태만 다룬다. 구독은 브라우저+기기 단위라 문구도 "이 기기에서"로 쓴다.
   미지원/비보안 컨텍스트/권한 차단이면 버튼 대신 이유를 보여준다 →
   [notifications.md](notifications.md).
+- **진행 중인 퀴즈** — `/mypage/summary`에는 없는 정보라 별도로 fan-out 조회한다:
+  `listProjects()`로 참여 중인 프로젝트를 받아 프로젝트마다
+  `quizApi.listMySessions(projectId, { status: "IN_PROGRESS" })` + `quizApi.listBooks(projectId)`
+  (제목 조회용)를 병렬 호출해 합친다. 목록이 비어 있으면 카드 자체를 렌더링하지 않고, 이 fetch가
+  실패해도 조용히 무시한다(마이페이지의 핵심 정보가 아니므로 전체 페이지 에러로 취급하지 않음).
+  각 행은 `/quiz/{quiz_book_id}/take`로 링크한다 — 재입장은 응시 시작과 같은 API라 별도 처리가
+  필요 없다([quiz.md](quiz.md) "진행 중 세션 재입장" 참고).
 - **내 최근 활동** — [`ActivityFeed`](activity-feed.md) 공용 컴포넌트를 그대로 쓴다.
 - 로딩은 실제 카드 높이에 맞춘 `MyPageSkeleton`(`aria-busy`)으로 대체한다.
 
-푸시 토글을 빼면 **읽기 전용**이다. 프로필 편집을 붙이려면 백엔드에 수정 엔드포인트
-(`PATCH /auth/me` 등)가 있는지부터 `/openapi.json`으로 확인한다.
+푸시 토글을 빼면 **읽기 전용**이다(진행 중인 퀴즈 fan-out 조회도 읽기 전용). 프로필 편집을
+붙이려면 백엔드에 수정 엔드포인트(`PATCH /auth/me` 등)가 있는지부터 `/openapi.json`으로 확인한다.

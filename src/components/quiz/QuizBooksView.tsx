@@ -267,7 +267,13 @@ function QuizBookCard({
           ariaLabel={`${book.title} 메뉴`}
           items={[
             { key: "duplicate", label: "복제해서 편집", onSelect: onDuplicate, disabled },
-            { key: "delete", label: "삭제", tone: "danger", onSelect: onDelete, disabled },
+            {
+              key: "delete",
+              label: "삭제",
+              tone: "danger",
+              onSelect: onDelete,
+              disabled: disabled || !book.can_manage,
+            },
           ]}
         />
       </div>
@@ -296,9 +302,11 @@ function QuizBookCard({
       )}
 
       <div className="mt-auto flex items-center gap-2 border-t border-border pt-3">
-        <Link href={`/quiz/${book.id}`} className={buttonClass("outline", "flex-1 justify-center")}>
-          문제집 관리
-        </Link>
+        {book.can_manage && (
+          <Link href={`/quiz/${book.id}`} className={buttonClass("outline", "flex-1 justify-center")}>
+            문제집 관리
+          </Link>
+        )}
         <Link
           href={`/quiz/${book.id}/take`}
           className={buttonClass(

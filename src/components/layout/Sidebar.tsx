@@ -46,11 +46,25 @@ const nav: NavItem[] = [
       {
         href: "/quiz",
         label: "문제집",
-        match: (p) => p === "/quiz" || /^\/quiz\/(?!bank|take|results)/.test(p),
+        match: (p) =>
+          p === "/quiz" ||
+          (p.startsWith("/quiz/") &&
+            !p.startsWith("/quiz/bank") &&
+            !p.startsWith("/quiz/take") &&
+            !p.startsWith("/quiz/results") &&
+            !/^\/quiz\/\d+\/(take|result)/.test(p)),
       },
       { href: "/quiz/bank", label: "문제은행", match: (p) => p.startsWith("/quiz/bank") },
-      { href: "/quiz/take", label: "퀴즈 응시", match: (p) => p.startsWith("/quiz/take") },
-      { href: "/quiz/results", label: "결과 · 오답", match: (p) => p.startsWith("/quiz/results") },
+      {
+        href: "/quiz/take",
+        label: "퀴즈 응시",
+        match: (p) => p.startsWith("/quiz/take") || /^\/quiz\/\d+\/take/.test(p),
+      },
+      {
+        href: "/quiz/results",
+        label: "결과 · 오답",
+        match: (p) => p.startsWith("/quiz/results") || /^\/quiz\/\d+\/result/.test(p),
+      },
     ],
   },
 ];
